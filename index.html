@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Popstart — Module 7, Section 1: Core Tech Stack Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* ── Reset & Root ───────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy:        #1F3A5F;
+      --teal:        #2EA3A6;
+      --amber:       #C97B2B;
+      --green:       #2E8B57;
+      --red:         #C0392B;
+      --blue:        #2E6FA3;
+      --bg:          #F7F8FA;
+      --surface:     #FFFFFF;
+      --border:      #D1D5DB;
+      --text:        #1A1A2E;
+      --text-light:  #6B7280;
+      --purple:      #6B3FA0;
+      --font-sans:   'Inter', system-ui, sans-serif;
+      --font-serif:  'Lora', Georgia, serif;
+      --font-mono:   'Courier New', Courier, monospace;
+      --radius-sm:   6px;
+      --radius-md:   10px;
+      --radius-lg:   14px;
+      --shadow:      0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-lg:   0 4px 16px rgba(0,0,0,.12);
+    }
+    html, body { height: 100%; font-family: var(--font-sans); background: var(--bg); color: var(--text); font-size: 14px; }
+
+    /* ── Topbar ─────────────────────────────────────────────────── */
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 52px; background: var(--navy);
+      display: flex; align-items: center; gap: 10px; padding: 0 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    .brand { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: .08em; text-transform: uppercase; flex-shrink: 0; }
+    .topbar-divider { width: 1px; height: 22px; background: rgba(255,255,255,.2); flex-shrink: 0; }
+    .topbar-field { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+    .topbar-label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+    .topbar-select, .topbar-text {
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
+      color: #fff; border-radius: var(--radius-sm); font-size: 12px; font-family: var(--font-sans);
+      padding: 3px 6px; outline: none;
+    }
+    .topbar-select { cursor: pointer; }
+    .topbar-select option { background: var(--navy); color: #fff; }
+    .topbar-text { width: 100px; }
+    .topbar-text:focus, .topbar-select:focus { border-color: var(--teal); }
+    .topbar-spacer { flex: 1; }
+    .topbar-section-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.45); letter-spacing: .05em; white-space: nowrap; flex-shrink: 0; }
+    .api-key-wrap { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+    #api-key-input { width: 140px; font-family: var(--font-mono); font-size: 11px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); color: #fff; border-radius: var(--radius-sm); padding: 3px 7px; outline: none; }
+    #api-key-input:focus { border-color: var(--teal); }
+    #api-key-input::placeholder { color: rgba(255,255,255,.3); }
+    .api-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; transition: background .3s; }
+    .api-unknown  { background: rgba(255,255,255,.25); }
+    .api-ok       { background: #4CAF50; box-shadow: 0 0 5px rgba(76,175,80,.5); }
+    .api-error    { background: var(--red); }
+    .api-checking { background: var(--amber); animation: apipulse .8s ease-in-out infinite; }
+    @keyframes apipulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+    .token-wrap { position: relative; display: flex; align-items: center; flex-shrink: 0; cursor: default; }
+    .token-total { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.55); padding: 3px 8px; border: 1px solid rgba(255,255,255,.15); border-radius: var(--radius-sm); white-space: nowrap; }
+    .token-wrap:hover .token-total { background: rgba(255,255,255,.1); color: #fff; }
+    .token-tip { display: none; position: absolute; top: calc(100% + 8px); right: 0; background: var(--navy); border: 1px solid rgba(255,255,255,.18); border-radius: var(--radius-md); padding: 10px 14px; font-size: 11px; font-family: var(--font-mono); color: rgba(255,255,255,.8); white-space: pre; line-height: 1.7; z-index: 200; min-width: 190px; box-shadow: var(--shadow-lg); }
+    .token-wrap:hover .token-tip { display: block; }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    #app { display: flex; height: 100vh; padding-top: 52px; }
+
+    /* ── Chat Pane ──────────────────────────────────────────────── */
+    #chat-pane { width: 420px; min-width: 420px; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--surface); }
+    #chat-header { padding: 12px 16px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    #chat-header h2 { font-size: 14px; font-weight: 700; color: var(--navy); }
+    #chat-header p  { font-size: 11px; color: var(--text-light); margin-top: 1px; }
+    #progress-bar { height: 3px; background: var(--border); flex-shrink: 0; }
+    #progress-fill { height: 100%; background: var(--teal); width: 0; transition: width .4s; }
+    #progress-label { padding: 4px 16px 2px; font-size: 10px; color: var(--text-light); display: flex; justify-content: space-between; flex-shrink: 0; }
+    #chat-messages { flex: 1; overflow-y: auto; padding: 14px 14px 8px; display: flex; flex-direction: column; gap: 10px; }
+    #chat-input-area { flex-shrink: 0; padding: 8px 12px 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+
+    /* ── Bubbles ────────────────────────────────────────────────── */
+    .bwrap { display: flex; }
+    .bwrap.bot  { justify-content: flex-start; }
+    .bwrap.user { justify-content: flex-end; }
+    .bubble { max-width: 88%; padding: 9px 13px; border-radius: var(--radius-md); font-size: 13px; line-height: 1.55; word-break: break-word; }
+    .bubble.bot     { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: var(--radius-sm); }
+    .bubble.user    { background: var(--navy); color: #fff; border-bottom-right-radius: var(--radius-sm); }
+    .bubble.hint    { background: transparent; border: none; color: var(--text-light); font-size: 12px; font-style: italic; padding: 2px 4px; }
+    .bubble.coach   { border-left: 3px solid var(--amber); background: #FFF8EE; }
+    .bubble.coach::before { content: 'COACH MOMENT'; display: block; font-size: 9px; font-weight: 700; color: var(--amber); letter-spacing: .08em; margin-bottom: 4px; }
+    .typing-indicator { display: flex; gap: 4px; align-items: center; height: 20px; }
+    .tdot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-light); animation: tdot 1.2s ease-in-out infinite; }
+    .tdot:nth-child(2) { animation-delay: .2s; }
+    .tdot:nth-child(3) { animation-delay: .4s; }
+    @keyframes tdot { 0%,80%,100%{opacity:.3;transform:scale(.8)} 40%{opacity:1;transform:scale(1)} }
+    .authored-pill { display: inline-block; margin-top: 8px; font-size: 10px; font-weight: 700; color: var(--amber); text-transform: uppercase; letter-spacing: .07em; }
+
+    /* ── Input Controls ─────────────────────────────────────────── */
+    #text-input-wrap { display: flex; flex-direction: column; gap: 4px; }
+    #main-textarea { width: 100%; min-height: 58px; max-height: 120px; resize: vertical; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-family: var(--font-sans); font-size: 13px; padding: 8px 10px; background: var(--bg); color: var(--text); outline: none; line-height: 1.45; }
+    #main-textarea:focus { border-color: var(--teal); background: var(--surface); }
+    .input-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    #char-counter { font-size: 11px; color: var(--text-light); white-space: nowrap; }
+    #char-counter.near-limit { color: var(--amber); }
+    #char-counter.at-limit   { color: var(--red); font-weight: 600; }
+    .btn { border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font-sans); font-weight: 600; transition: background .15s, opacity .15s; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    #send-btn { background: var(--teal); color: #fff; font-size: 13px; padding: 7px 18px; }
+    #send-btn:hover:not(:disabled) { background: #2591A0; }
+    #skip-btn { background: transparent; color: var(--text-light); font-size: 12px; padding: 5px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; }
+    #skip-btn:hover { color: var(--text); border-color: #999; }
+    /* Pills */
+    .pill-group { display: flex; flex-wrap: wrap; gap: 7px; padding: 4px 0 2px; }
+    .pill { background: var(--surface); border: 1.5px solid var(--border); color: var(--text); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 500; cursor: pointer; transition: border-color .15s, background .15s; }
+    .pill:hover   { border-color: var(--teal); background: #EEF7F7; }
+    .pill.selected { border-color: var(--teal); background: #EEF7F7; color: var(--navy); font-weight: 600; }
+    .pill.navy    { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .pill.navy:hover { background: #162d4a; }
+    .pill.exclusive.selected { border-color: var(--red); background: #FDF2F2; color: var(--red); }
+    /* Dynlist */
+    .dynlist-wrap { display: flex; flex-direction: column; gap: 5px; }
+    .dynlist-row  { display: flex; gap: 6px; align-items: center; }
+    .dynlist-num  { font-size: 11px; font-weight: 700; color: var(--text-light); width: 16px; flex-shrink: 0; }
+    .dynlist-input { flex: 1; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 6px 9px; font-family: var(--font-sans); font-size: 13px; background: var(--bg); outline: none; }
+    .dynlist-input:focus { border-color: var(--teal); background: var(--surface); }
+    .dynlist-rm   { background: none; border: none; cursor: pointer; color: var(--text-light); font-size: 15px; padding: 0 4px; }
+    .dynlist-rm:hover { color: var(--red); }
+    .dynlist-add  { background: none; border: 1.5px dashed var(--border); border-radius: var(--radius-sm); padding: 5px 10px; font-size: 12px; color: var(--text-light); cursor: pointer; text-align: left; }
+    .dynlist-add:hover { border-color: var(--teal); color: var(--teal); }
+    /* Dropdown */
+    .prompt-dropdown { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 8px 10px; font-family: var(--font-sans); font-size: 13px; background: var(--bg); color: var(--text); outline: none; }
+    .prompt-dropdown:focus { border-color: var(--teal); }
+    /* Hint text below question */
+    .hint-line { font-size: 12px; color: var(--text-light); font-style: italic; margin-top: 2px; }
+    /* Example button */
+    .bubble-action-row { margin-top: 7px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .bubble-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--text-light); cursor: pointer; }
+    .bubble-btn:hover { color: var(--teal); border-color: var(--teal); }
+
+    /* ── Canvas Pane ────────────────────────────────────────────── */
+    #canvas-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .canvas-tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+    .canvas-tab { padding: 10px 18px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: var(--text-light); border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; display: flex; align-items: center; gap: 6px; }
+    .canvas-tab:hover  { color: var(--text); }
+    .canvas-tab.active { color: var(--navy); border-bottom-color: var(--teal); font-weight: 600; }
+    .tab-badge { background: var(--teal); color: #fff; border-radius: 10px; padding: 1px 6px; font-size: 10px; font-weight: 700; }
+    .canvas-panels { flex: 1; overflow: hidden; position: relative; }
+    .canvas-panel { position: absolute; inset: 0; overflow-y: auto; padding: 20px; }
+    .canvas-panel.hidden { display: none; }
+    @keyframes tabflash { 0%,100%{background:var(--surface)} 50%{background:#EEF7F7} }
+    .tab-flash { animation: tabflash .6s ease; }
+
+    /* ── Cards ──────────────────────────────────────────────────── */
+    .cards-grid { display: flex; flex-direction: column; gap: 12px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow); overflow: hidden; }
+    .card-header { padding: 10px 14px 8px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .card-title { font-size: 12px; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: .06em; }
+    .card-body { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 6px; }
+    .card-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: 12px; }
+    .card-label { color: var(--text-light); font-weight: 500; white-space: nowrap; flex-shrink: 0; }
+    .card-value { color: var(--text); font-weight: 600; text-align: right; word-break: break-word; }
+    .card-row.flagged .card-value { color: var(--amber); }
+    .card-ph { height: 12px; background: var(--border); border-radius: 4px; opacity: .5; }
+    @keyframes cardpop { 0%{transform:scale(.98);opacity:.6} 100%{transform:scale(1);opacity:1} }
+    .card-populated { animation: cardpop .25s ease-out; }
+
+    /* ── Deliverable ────────────────────────────────────────────── */
+    #deliv-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; color: var(--text-light); padding: 40px; text-align: center; }
+    #deliv-empty svg { opacity: .3; }
+    #deliv-empty p { font-size: 13px; max-width: 260px; line-height: 1.5; }
+    #deliv-content.hidden { display: none; }
+    .deliv-section { margin-bottom: 28px; }
+    .zone-label { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .zone-num { width: 22px; height: 22px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .zone-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-light); }
+
+    /* Zone 1 chips */
+    .chips-row { display: flex; flex-wrap: wrap; gap: 7px; }
+    .snap-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; border: 1px solid; }
+    .snap-chip .chip-key { font-weight: 400; opacity: .7; margin-right: 2px; }
+    .chip-stage    { background: #EBF2FF; border-color: #2E6FA3; color: #1a3a6a; }
+    .chip-type     { background: #F3F4F6; border-color: #9CA3AF; color: var(--text); }
+    .chip-geo      { background: #F3F4F6; border-color: #9CA3AF; color: var(--text); }
+    .chip-drain    { background: #FFF4E6; border-color: var(--amber); color: #7a4a10; }
+    .chip-priority { background: #EEF7F7; border-color: var(--teal); color: #1a5b5e; }
+    .chip-budget   { background: #F0F7FF; border-color: #2E6FA3; color: #1a3a6a; }
+    .chip-flagged  { background: #FFF8EE; border-color: var(--amber); color: #7a4a10; }
+
+    /* Zone 2 — Checklist table */
+    .checklist-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .checklist-table th { background: var(--navy); color: #fff; padding: 8px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; text-align: left; }
+    .checklist-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .checklist-table tr:last-child td { border-bottom: none; }
+    .checklist-table tr.priority-row { background: #F0F5FF; }
+    .checklist-table tr.priority-row .cat-name { font-weight: 700; color: var(--navy); }
+    .priority-badge { display: inline-block; background: var(--navy); color: #fff; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; padding: 2px 6px; border-radius: 3px; margin-left: 6px; }
+    .cat-name { font-weight: 600; color: var(--text); }
+    .cat-desc { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+    .coming-row td { color: var(--text-light); font-style: italic; font-size: 12px; }
+    /* Status flags */
+    .flag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
+    .flag-green  { background: #EBF9F1; color: var(--green); border: 1px solid #2E8B57; }
+    .flag-amber  { background: #FFF8E6; color: #92600a; border: 1px solid var(--amber); }
+    .flag-blue   { background: #EBF2FF; color: var(--blue); border: 1px solid var(--blue); }
+    .flag-red    { background: #FDECEA; color: var(--red); border: 1px solid var(--red); }
+    .z2-note { font-size: 11px; color: var(--text-light); font-style: italic; margin-top: 8px; }
+
+    /* Zone 3 — Coverage Tier (no hex codes per ADD §7.5) */
+    .tier-track { display: flex; gap: 0; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); margin-bottom: 10px; }
+    .tier-stop { flex: 1; padding: 10px; text-align: center; font-size: 12px; font-weight: 600; color: var(--text-light); background: var(--bg); border-right: 1px solid var(--border); position: relative; }
+    .tier-stop:last-child { border-right: none; }
+    .tier-stop.active { background: #EEF7F7; color: var(--teal); border-color: var(--teal); }
+    .tier-stop.active::after { content: '◀'; position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--teal); }
+    .tier-stop.active.last::after { content: ''; }
+    .tier-rationale { font-size: 13px; color: var(--text); line-height: 1.55; }
+    .tier-rationale strong { color: var(--navy); }
+
+    /* Zone 4 — Coach Moment (purple left border) */
+    .coach-block { border-left: 3px solid var(--purple); padding: 12px 14px; background: var(--bg); border-radius: 0 var(--radius-md) var(--radius-md) 0; margin-bottom: 10px; }
+    .coach-block-label { font-size: 9px; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+    .coach-q-text { font-family: var(--font-serif); font-size: 14px; font-style: italic; line-height: 1.55; color: var(--text); margin-bottom: 5px; }
+    .coach-q-source { font-size: 11px; color: var(--text-light); }
+
+    /* Zone 5 */
+    .z5-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .z5-col-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-light); margin-bottom: 8px; }
+    .z5-action { margin-bottom: 8px; font-size: 12px; line-height: 1.5; }
+    .z5-action strong { color: var(--navy); }
+    .z5-nav { font-size: 12px; line-height: 1.6; color: var(--text); }
+    .nav-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-light); letter-spacing: .06em; margin-bottom: 4px; }
+    .nav-forward { color: var(--navy); font-weight: 600; }
+    /* Terms to Know */
+    .terms-block { margin-top: 12px; }
+    .terms-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-light); margin-bottom: 8px; }
+    .terms-grid { display: flex; flex-direction: column; gap: 8px; }
+    .term-row { font-size: 12px; line-height: 1.5; }
+    .term-row dt { font-weight: 700; color: var(--navy); display: inline; }
+    .term-row dd { display: inline; color: var(--text); margin-left: 4px; }
+    /* Boundaries */
+    .boundaries-block { border: 1.5px solid var(--amber); border-radius: var(--radius-md); padding: 12px 14px; background: #FFFBF5; margin-top: 20px; }
+    .boundaries-block p { font-size: 11px; color: var(--text-light); line-height: 1.55; }
+    .boundaries-block p + p { margin-top: 6px; }
+
+    /* ── Review Moment ──────────────────────────────────────────── */
+    .review-banner { background: var(--surface); border: 1.5px solid var(--teal); border-radius: var(--radius-md); padding: 14px; margin-bottom: 10px; }
+    .review-banner-label { font-size: 10px; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+
+    /* ── Coach Mode overlay ─────────────────────────────────────── */
+    #coach-overlay { display: none; position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.4); align-items: flex-end; justify-content: center; }
+    #coach-panel { background: var(--surface); width: 100%; max-width: 700px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; max-height: 70vh; overflow-y: auto; padding: 20px 24px 28px; box-shadow: 0 -4px 24px rgba(0,0,0,.15); }
+    #coach-panel h3 { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+    #coach-panel .coach-sub { font-size: 12px; color: var(--text-light); margin-bottom: 14px; }
+    .coach-topics-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .coach-topic-btn { background: var(--bg); border: 1.5px solid var(--border); color: var(--text); border-radius: var(--radius-sm); padding: 7px 13px; font-size: 12px; font-weight: 500; cursor: pointer; transition: border-color .15s, background .15s; }
+    .coach-topic-btn:hover  { border-color: var(--teal); background: #EEF7F7; }
+    .coach-topic-btn.active { border-color: var(--amber); background: #FFF8EE; color: var(--navy); font-weight: 600; }
+    #coach-answer-area { display: none; background: #FFF8EE; border: 1px solid #F0C980; border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px; font-size: 13px; line-height: 1.6; color: var(--text); }
+    .coach-free-input { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; font-family: var(--font-sans); font-size: 13px; resize: vertical; min-height: 44px; }
+    .coach-free-input:focus { border-color: var(--teal); outline: none; }
+    .coach-row { display: flex; gap: 8px; margin-top: 8px; }
+    .coach-send-btn  { background: var(--teal); color: #fff; border: none; border-radius: var(--radius-sm); padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .coach-close-btn { background: transparent; border: 1px solid var(--border); color: var(--text-light); border-radius: var(--radius-sm); padding: 7px 14px; font-size: 12px; cursor: pointer; }
+    .coach-close-btn:hover { color: var(--text); border-color: #999; }
+
+    /* ── Misc ───────────────────────────────────────────────────── */
+    .hidden { display: none !important; }
+    button { font-family: var(--font-sans); }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header id="topbar">
+  <span class="brand">Popstart</span>
+  <div class="topbar-divider"></div>
+  <div class="topbar-field">
+    <span class="topbar-label">Stage</span>
+    <select id="sel-stage" class="topbar-select">
+      <option value="">— select —</option>
+      <option value="just-exploring">Just Exploring</option>
+      <option value="pre-launch">Pre-Launch</option>
+      <option value="early-stage">Early Stage</option>
+      <option value="growth">Growth</option>
+      <option value="established">Established</option>
+    </select>
+  </div>
+  <div class="topbar-field">
+    <span class="topbar-label">Business Type</span>
+    <select id="sel-type" class="topbar-select">
+      <option value="">—</option>
+      <option value="service">Service</option>
+      <option value="product">Product</option>
+      <option value="ecommerce">E-Commerce</option>
+    </select>
+  </div>
+  <div class="topbar-field">
+    <span class="topbar-label">Geo</span>
+    <select id="sel-geo" class="topbar-select">
+      <option value="">—</option>
+      <option value="local">Local</option>
+      <option value="regional">Regional</option>
+      <option value="national">National</option>
+      <option value="global">Global</option>
+      <option value="online-only">Online Only</option>
+    </select>
+  </div>
+  <div class="topbar-field">
+    <span class="topbar-label">Industry</span>
+    <input id="inp-industry" class="topbar-text" type="text" placeholder="e.g. Retail" maxlength="40">
+  </div>
+  <div class="topbar-divider"></div>
+  <div class="api-key-wrap topbar-field">
+    <span class="topbar-label">API Key</span>
+    <input id="api-key-input" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false"
+      value="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">
+    <div id="api-dot" class="api-dot api-unknown" title="API status"></div>
+  </div>
+  <div class="topbar-divider"></div>
+  <div class="token-wrap" id="token-wrap">
+    <span class="token-total">Tokens: 0</span>
+    <div class="token-tip"></div>
+  </div>
+  <div class="topbar-spacer"></div>
+  <span class="topbar-section-label">Module 7, Section 1 — Core Tech Stack</span>
+</header>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- Chat Pane -->
+  <div id="chat-pane">
+    <div id="chat-header">
+      <h2>Core Tech Stack Checklist</h2>
+      <p>Module 7 · Section 1 · Building Your Core Tech Stack</p>
+    </div>
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+    <div id="progress-label"><span id="progress-step">Getting started</span><span id="progress-pct">0%</span></div>
+    <div id="chat-messages"></div>
+    <div id="chat-input-area" style="display:none">
+      <div id="text-input-wrap">
+        <textarea id="main-textarea" placeholder="Share your thoughts…"></textarea>
+        <div class="input-row">
+          <span id="char-counter"></span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button id="skip-btn" style="display:none">Skip for now</button>
+            <button id="send-btn" class="btn" disabled>Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Canvas Pane -->
+  <div id="canvas-pane">
+    <div class="canvas-tabs">
+      <button class="canvas-tab active" data-panel="answers">Your Answers <span class="tab-badge" id="badge-answers" style="display:none">0</span></button>
+      <button class="canvas-tab" data-panel="stages">Stages</button>
+      <button class="canvas-tab" data-panel="deliverable" id="tab-deliverable">Deliverable</button>
+    </div>
+    <div class="canvas-panels">
+
+      <!-- Your Answers -->
+      <div class="canvas-panel" id="panel-answers">
+        <div class="cards-grid">
+          <div class="card" id="card-1"><div class="card-header"><span class="card-title">Your Situation</span></div><div class="card-body"><div class="card-ph" style="width:70%"></div><div class="card-ph" style="width:50%"></div></div></div>
+          <div class="card" id="card-2"><div class="card-header"><span class="card-title">Your Priority Move</span></div><div class="card-body"><div class="card-ph" style="width:60%"></div></div></div>
+          <div class="card" id="card-3"><div class="card-header"><span class="card-title">Your Core Tech Stack Checklist</span></div><div class="card-body"><div class="card-ph" style="width:80%"></div><div class="card-ph" style="width:60%"></div></div></div>
+          <div class="card" id="card-4"><div class="card-header"><span class="card-title">Your Stack Readiness</span></div><div class="card-body"><div class="card-ph" style="width:55%"></div></div></div>
+          <div class="card" id="card-5"><div class="card-header"><span class="card-title">Coach Moment</span></div><div class="card-body"><div class="card-ph" style="width:75%"></div></div></div>
+          <div class="card" id="card-6"><div class="card-header"><span class="card-title">What's Next</span></div><div class="card-body"><div class="card-ph" style="width:65%"></div></div></div>
+          <div class="card" id="card-7"><div class="card-header"><span class="card-title">Terms in Your Tech Stack Checklist</span></div><div class="card-body"><div class="card-ph" style="width:50%"></div></div></div>
+        </div>
+      </div>
+
+      <!-- Stages -->
+      <div class="canvas-panel hidden" id="panel-stages">
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:14px;">Each card maps to a deliverable zone and populates as you answer prompts.</p>
+        <div style="font-size:12px;color:var(--text-light);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <div style="display:grid;grid-template-columns:70px 1fr 1fr;background:var(--navy);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 12px;gap:8px;"><span>Card</span><span>Maps to</span><span>Source</span></div>
+          <div style="display:grid;grid-template-columns:70px 1fr 1fr;padding:7px 12px;gap:8px;border-top:1px solid var(--border);background:var(--surface);"><span style="font-weight:600;color:var(--navy)">Card 1</span><span>Zone 1 — Profile Snapshot</span><span>Stage, Type, Geo, P1, P4, P5</span></div>
+          <div style="display:grid;grid-template-columns:70px 1fr 1fr;padding:7px 12px;gap:8px;border-top:1px solid var(--border);"><span style="font-weight:600;color:var(--navy)">Card 2</span><span>Zone 2 — Priority Move</span><span>P4</span></div>
+          <div style="display:grid;grid-template-columns:70px 1fr 1fr;padding:7px 12px;gap:8px;border-top:1px solid var(--border);background:var(--surface);"><span style="font-weight:600;color:var(--navy)">Card 3</span><span>Zone 2 — Checklist rows</span><span>P2, P3, P6 + gating</span></div>
+          <div style="display:grid;grid-template-columns:70px 1fr 1fr;padding:7px 12px;gap:8px;border-top:1px solid var(--border);"><span style="font-weight:600;color:var(--navy)">Card 4</span><span>Zone 3 — Stack Readiness</span><span>P3 → P2 → P6</span></div>
+          <div style="display:grid;grid-template-columns:70px 1fr 1fr;padding:7px 12px;gap:8px;border-top:1px solid var(--border);background:var(--surface);"><span style="font-weight:600;color:var(--navy)">Card 5</span><span>Zone 4 — Coach Moment</span><span>Stage Q1 + gap Q2</span></div>
+          <div style="display:grid;grid-template-columns:70px 1fr 1fr;padding:7px 12px;gap:8px;border-top:1px solid var(--border);"><span style="font-weight:600;color:var(--navy)">Card 6</span><span>Zone 5 — What's Next</span><span>Actions + navigation</span></div>
+          <div style="display:grid;grid-template-columns:70px 1fr 1fr;padding:7px 12px;gap:8px;border-top:1px solid var(--border);background:var(--surface);"><span style="font-weight:600;color:var(--navy)">Card 7</span><span>Zone 5 — Terms to Know</span><span>Stage-filtered glossary</span></div>
+        </div>
+      </div>
+
+      <!-- Deliverable -->
+      <div class="canvas-panel hidden" id="panel-deliverable">
+        <div id="deliv-empty">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><rect x="8" y="6" width="32" height="36" rx="3" stroke="#9CA3AF" stroke-width="2"/><line x1="14" y1="16" x2="34" y2="16" stroke="#9CA3AF" stroke-width="2"/><line x1="14" y1="22" x2="34" y2="22" stroke="#9CA3AF" stroke-width="2"/><line x1="14" y1="28" x2="26" y2="28" stroke="#9CA3AF" stroke-width="2"/></svg>
+          <p>Your checklist will appear here once you've answered all the prompts.</p>
+        </div>
+        <div id="deliv-content" class="hidden">
+          <div id="zone-1" class="deliv-section"><div class="zone-label"><div class="zone-num">1</div><div class="zone-title">Profile Snapshot</div></div><div id="z1-chips" class="chips-row"></div></div>
+          <div id="zone-2" class="deliv-section"><div class="zone-label"><div class="zone-num">2</div><div class="zone-title">Core Tech Stack Checklist</div></div><div id="z2-content"></div></div>
+          <div id="zone-3" class="deliv-section"><div class="zone-label"><div class="zone-num">3</div><div class="zone-title">Stack Readiness</div></div><div id="z3-content"></div></div>
+          <div id="zone-4" class="deliv-section"><div class="zone-label"><div class="zone-num">4</div><div class="zone-title">Coach Moment</div></div><div id="z4-content"></div></div>
+          <div id="zone-5" class="deliv-section"><div class="zone-label"><div class="zone-num">5</div><div class="zone-title">What's Next</div></div><div id="z5-content"></div></div>
+          <div id="boundaries-block" class="boundaries-block"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Coach Mode Overlay -->
+<div id="coach-overlay">
+  <div id="coach-panel">
+    <h3>Coach Mode</h3>
+    <p class="coach-sub">Ask a question or pick a topic.</p>
+    <div class="coach-topics-grid" id="coach-topics-grid"></div>
+    <div id="coach-answer-area"></div>
+    <textarea id="coach-free-input" class="coach-free-input" placeholder="Ask anything about your tech stack…" rows="2"></textarea>
+    <div class="coach-row">
+      <button id="coach-send-btn" class="coach-send-btn">Ask</button>
+      <button id="coach-close-btn" class="coach-close-btn">Close</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════════════════
+   POPSTART — MODULE 7, SECTION 1: CORE TECH STACK BUILDER
+   Prototype v1 · Generated from ADD v1.2
+   Checklist template · Coverage Tier Zone 3
+   6 Required prompts · No composites · No Mode-Switch · No gate
+   Established folds into Growth
+═══════════════════════════════════════════════════════════════ */
+
+/* ─── DATA LAYER ─────────────────────────────────────────────── */
+
+const PROMPT_KEYS = ['P1','P2','P3','P4','P5','P6'];
+
+const PROMPTS = {
+  P1: {
+    id:'P1', name:'Top Time Drains', type:'dynlist',
+    dynCap: { default:3, elevated:6 }, dynMin:1, charLimit:300,
+    hint:"When you picture a normal week, what eats your time that isn't the actual work you got into this for? Name the things you'd hand off in a heartbeat.",
+    example:'"Chasing late invoices, re-typing client details into three different places, scheduling calls back and forth over email."',
+    notSure:{
+      moves:[
+        "That's completely fine — lots of people haven't thought about this yet. Let's start small.",
+        "Think about last Monday — what did you do before the real work started?",
+        "Most owners lose time to invoicing, scheduling, or re-entering data — any of those land?"
+      ], default:null
+    }
+  },
+  P2: {
+    id:'P2', name:'Current Tools Inventory', type:'dynlist',
+    dynCap: { default:3, elevated:6 }, dynMin:1, charLimit:300,
+    hint:"What are you already using to run things — even if it's just your personal email and a notes app? No judgment; I just want to see what's already in play.",
+    example:'"Gmail for everything, a paper notebook for clients, Venmo for payments."',
+    notSure:{
+      moves:[
+        "No worries — let's start with the basics.",
+        "How does someone pay you today, and how do they reach you?",
+        "A tool is anything you use to do the work — apps, email, even a spreadsheet. What's the first one that comes to mind?"
+      ], default:null
+    }
+  },
+  P3: {
+    id:'P3', name:'Payment & Communication Foundation', type:'multiselect',
+    options:['A way to get paid','A professional email or domain','A business phone or scheduling link','None of these yet'],
+    exclusiveOption:'None of these yet',
+    hint:"Before anything else: can people pay you easily, and can you reach them in a way that feels professional? Tell me which of these you've already got sorted.",
+    example:'"I can take card payments through Square, but I\'m still using my personal Gmail."',
+    notSure:{
+      moves:[
+        "No problem — let's figure out where you are.",
+        "Think about the last time a client paid you — how did that work?",
+        "Most businesses start with one payment method and one professional inbox — want to start there?"
+      ], default:null
+    }
+  },
+  P4: {
+    id:'P4', name:'The Priority Move', type:'dropdown',
+    options:['Productivity & Communication','Customer Management','Financial','Marketing','Operations','Compliance, Security & Integration'],
+    hint:"If you could only set up or fix one of these this week, which one would change how the whole operation feels? I've got a hunch based on what you told me — but it's your call.",
+    example:'"Financial — honestly, getting paid on time would fix half my stress."',
+    notSure:{
+      moves:[
+        "Let me share my recommendation based on what you told me, and you can tell me if it feels right.",
+        "Based on your top time drain, I'd start with [synthesized_category] — does that feel right?",
+        "One well-chosen tool in the right area beats five used poorly. Here's my recommendation:"
+      ], default:null
+    }
+  },
+  P5: {
+    id:'P5', name:'Monthly Software Budget Comfort', type:'dropdown',
+    options:['Under $50/mo','$50–150/mo','$150–400/mo','$400+/mo'],
+    hint:"Roughly, what feels comfortable to spend on software each month right now? I'll keep recommendations inside the range that fits a business your size — not an enterprise stack.",
+    example:'"Maybe $50 to $150 a month — I\'d rather start lean."',
+    notSure:{
+      moves:[
+        "No pressure on exact numbers — I just want to keep recommendations realistic for where you are.",
+        "Most core tools have free or low-cost tiers early on — does under $50/mo feel about right?",
+        "Here's the typical range for a business at your stage — does any of these feel right?"
+      ], default:null
+    }
+  },
+  P6: {
+    id:'P6', name:'Integration Needs', type:'dynlist',
+    dynCap: { default:3, elevated:3 }, dynMin:0, charLimit:300,
+    hint:"Are there places where you're the one carrying information from one tool to another by hand? Tell me where you wish things just talked to each other.",
+    example:'"When someone books a call it should land in my calendar and create a contact — right now I do all that myself."',
+    notSure:{
+      moves:[
+        "No problem — even a rough idea helps.",
+        "Is there anything you type into two different places?",
+        "Which one connection, if it just worked, would save the most time?"
+      ], default:null
+    }
+  }
+};
+
+/* §1.5 verbatim opening lines */
+const STAGE_OPENINGS = {
+  'just-exploring': "Right now the goal isn't to buy anything — it's to understand what a tech stack even is and which two or three tools would actually save you time once you start. Let's keep this lean and figure out where yours should begin.",
+  'pre-launch':     "You're close to launch, so the tools you pick now will shape how you work for a long time. Let's make sure the foundation — getting paid and communicating professionally — is solid before we add anything else.",
+  'early-stage':    "You've already got tools in motion, so this is less about adding and more about whether they're working together or quietly creating manual work. Let's audit what you've got and find the one move that buys back the most time.",
+  'growth':         "You've already got tools in motion, so this is less about adding and more about whether they're working together or quietly creating manual work. Let's audit what you've got and find the one move that buys back the most time."
+};
+
+/* §1.5 Established fold-in acknowledgment */
+const ESTABLISHED_OPENING = "You know your operation. Let's look at where your stack is costing you margin — overlapping tools, manual bridges between systems — and tighten it. No basics, just the gaps worth closing.";
+
+/* §3.3 transitions */
+const GENERATION_TRANSITION = "Got everything I need — here's your Core Tech Stack Checklist.";
+const COACH_TRANSITION      = "Here's your Core Tech Stack Checklist — built for where you are right now, not where you hope to be. Let's look at the one move that'll buy back the most time.";
+
+const REDIRECT_STAGES = [];
+const FOLD_STAGES     = { 'established': 'growth' };
+
+/* §8.1 Coach Moment Q1 — stage-specific */
+const COACH_Q1 = {
+  'just-exploring': { q:"Before you spend a dollar on tools, what's the one task that — once it's handled — would make you feel like a real business?", source:"Popstart coaching heuristic" },
+  'pre-launch':     { q:"Which one of these gaps, left unfixed, would cost you the most in your first month of real customers?", source:"Popstart coaching heuristic" },
+  'early-stage':    { q:"If your single biggest manual task were automated tomorrow, where would you reinvest the hours — and is that the real lever, or a strategy question your stack can't solve?", source:"Popstart coaching heuristic" },
+  'growth':         { q:"If your single biggest manual task were automated tomorrow, where would you reinvest the hours — and is that the real lever, or a strategy question your stack can't solve?", source:"Popstart coaching heuristic" }
+};
+
+/* §8.1 Coach Moment Q2 — gap-specific bank (priority order) */
+const COACH_Q2_BANK = [
+  { condition:'foundation', q:"You don't have a reliable way to get paid and look professional yet — what would it take this week to set up one simple payment method and one professional way to communicate?", source:"SBA — Technology for Small Business" },
+  { condition:'priority-uncovered', q:"Your priority is [priority_category], but nothing's covering it yet — what's the one option you could put in place this week?", source:"G2 — Small Business Tech Stack Guide" },
+  { condition:'integration', q:"You're the one carrying [integration_task] between tools by hand — which single connection, set up once, would buy back the most time?", source:"G2 — Small Business Tech Stack Guide" },
+  { condition:'overlap', q:"You've got more than one tool doing the same job — which overlap could you cancel this month without losing anything?", source:"Popstart coaching heuristic" },
+  { condition:'connected', q:"Your stack is in good shape and mostly connected. What's the one improvement that takes it from working to effortless — and is now the time, or is it better spent elsewhere?", source:"Popstart coaching heuristic" }
+];
+
+/* §6.4 Static gating matrix — categories × stage */
+const CATEGORY_GATES = {
+  'Productivity & Communication':      { 'just-exploring':true,  'pre-launch':true,  'early-stage':true, 'growth':true },
+  'Financial':                         { 'just-exploring':true,  'pre-launch':true,  'early-stage':true, 'growth':true },
+  'Customer Management':               { 'just-exploring':false, 'pre-launch':true,  'early-stage':true, 'growth':true },
+  'Marketing':                         { 'just-exploring':false, 'pre-launch':false, 'early-stage':true, 'growth':true },
+  'Operations':                        { 'just-exploring':false, 'pre-launch':false, 'early-stage':true, 'growth':true },
+  'Compliance, Security & Integration':{ 'just-exploring':false, 'pre-launch':false, 'early-stage':true, 'growth':true }
+};
+
+/* §9.3 Glossary — verbatim from ADD */
+const TERMS = {
+  core: [
+    { term:'Tech Stack', def:'The complete set of digital tools a business uses to handle daily operations. A well-chosen stack connects seamlessly and works in the background without requiring manual effort to maintain.' },
+    { term:'Integration', def:'A connection between two or more software tools that allows them to share data automatically. When integrated, tools function as one system rather than several you manage separately.' },
+    { term:'Admin Audit', def:'The process of listing every administrative task a business performs in a given period and ranking them by time cost. The starting point for identifying where tools can create the most impact.' },
+    { term:'Reactive Stack', def:'A tech stack built by adding tools one at a time without a plan. Often creates overlap, redundancy, and manual work that compounds over time rather than reducing it.' }
+  ],
+  conditional: {
+    'Productivity & Communication': { term:'Domain-Based Email', def:'A professional email address that uses your business domain name rather than a personal provider. Signals credibility and keeps business communication separate from personal.' },
+    'Financial':                    { term:'Invoicing', def:'The process of generating and sending a formal request for payment to a client. A professional invoicing tool creates invoices quickly, tracks payment status, and sends reminders automatically.' },
+    'Customer Management':          { term:'CRM', def:'A platform that centralizes all client and prospect information, tracks pipeline stages, and automates follow-up. Acts as the memory behind every client interaction.' },
+    'Operations':                   { term:'Online Scheduling Tool', def:'A tool that allows clients to book appointments directly based on available times, eliminating the back-and-forth of coordinating meeting times by email or phone.' }
+  }
+};
+
+/* §2.5 Coach Mode topics — verbatim */
+const COACH_TOPICS = [
+  {
+    key:'compare', label:'Choosing between two tools',
+    keywords:['which tool','compare','vs','pick','decide','recommendation','best tool'],
+    answer:"Tell me the two you're weighing and what matters most — price, ease of setup, or whether it connects to what you already use. For [priority_category], the deciding factor at your stage is usually integration, not features: the tool that talks to your existing stack saves more time than the one with the longer feature list. Start with the free or lowest tier that covers the job — you can upgrade once you've outgrown it, but you can't get back the time spent migrating off the wrong choice. One tool per job, used well, beats two used halfway. Which two are you looking at?"
+  },
+  {
+    key:'foundation', label:'Setting up your foundation',
+    keywords:['foundation','get paid','payment','professional email','domain','scheduling'],
+    answer:"The foundation is two things: can people pay you easily, and can you reach them professionally. Start with one payment method — a simple invoicing-and-payment tool with a free or pay-as-you-go tier — so business money stays separate from personal from day one. Then a professional email on your own domain; it costs little and changes how you're perceived immediately. You don't need a phone system yet — a scheduling link covers most of it. Get these two in place before anything fancier; the rest of your stack sits on top of them. Want help picking a starting payment option for a [business_type] business?"
+  },
+  {
+    key:'integration', label:'Your first integration',
+    keywords:['integration','connect','sync','automate','link tools','share data','first integration'],
+    answer:"Integration just means two tools sharing data so you stop being the manual bridge. Don't connect everything — pick the one handoff you do by hand most often. For most businesses that's getting payments or orders into your accounting tool automatically, so you're not re-typing numbers at month-end. You mentioned [integration_task] — that's where I'd start: set it up once and it pays you back every week. Use a native connection if the tools offer one before reaching for a third-party connector. Which single connection, if it just worked, would save the most time? Start there, confirm it's solid, then add the next."
+  },
+  {
+    key:'cancel', label:'What to cancel',
+    keywords:['cancel','overlap','redundant','too many tools','duplicate','consolidate','save money'],
+    answer:"The fastest win in any stack is canceling what you pay for twice. Look for two tools doing the same job — two places for files, two that send email, two that track tasks. Keep the one that connects best to the rest of your stack and cancel the other; you rarely lose anything but the second bill. Also flag anything you signed up for and haven't opened in a month. Export what you need before you cancel. Build lean: one tool per job. You can always add more — you can't get back the money quietly draining each month. Want to walk your current tools and spot the overlaps?"
+  }
+];
+
+/* §10 Boundaries — verbatim */
+const BOUNDARIES = {
+  p1: "This Core Tech Stack Checklist provides general information only — not legal, financial, or professional advice. Tool names are illustrative examples, not endorsements, and pricing and features change frequently and may not reflect current conditions. We make no guarantees about accuracy, completeness, or outcomes. Verify current pricing and fit with each provider, and consult a qualified professional before decisions that carry financial or legal weight.",
+  p2: "This checklist is a directional starting point built from what you told us this session — not a recommendation to buy any specific product. It does not provide pricing-negotiation, tax, or legal advice, and recommendations stay within the budget band you set. Tool names are examples to illustrate the category, not endorsements; one tool per job, chosen for fit, beats a longer list. Questions about entity formation or contracts go to your attorney; tax treatment goes to your accountant. You can always add more tools later — the goal here is a lean core that buys back time, not the biggest stack."
+};
+
+/* §7.2 Review Moment verbatim */
+const REVIEW = {
+  step1: "Before I build your tech stack checklist, here's what we're working with:",
+  step2: "Does this feel right?",
+  step3A: "Got everything I need — here's your Core Tech Stack Checklist.",
+  step3B: "Updated. Anything else, or are we ready to go?",
+  step3C: "Got it — adding that in. Ready to build.",
+  step3D: "Take your time — whenever you're ready, just say go and I'll put it together."
+};
+
+/* ─── SESSION STATE ──────────────────────────────────────────── */
+let S = {
+  stage:'', effectiveStage:'', businessType:'', geoScope:'', industry:'',
+  answers:{ P1:null, P2:null, P3:null, P4:null, P5:null, P6:null },
+  skips:{ P1:0, P2:0, P3:0, P4:0, P5:0, P6:0 },
+  notSureCounts:{ P1:0, P2:0, P3:0, P4:0, P5:0, P6:0 },
+  generated:false, step:0, plan:[],
+  p4Suggested:null,
+  tokens_used:{ total_in:0, total_out:0, by_type:{ draft:{in:0,out:0}, coach:{in:0,out:0} } }
+};
+
+/* ─── DOM REFS ───────────────────────────────────────────────── */
+const $msgs    = document.getElementById('chat-messages');
+const $input   = document.getElementById('chat-input-area');
+const $twrap   = document.getElementById('text-input-wrap');
+const $ta      = document.getElementById('main-textarea');
+const $counter = document.getElementById('char-counter');
+const $send    = document.getElementById('send-btn');
+const $skip    = document.getElementById('skip-btn');
+const $pfill   = document.getElementById('progress-fill');
+const $pstep   = document.getElementById('progress-step');
+const $ppct    = document.getElementById('progress-pct');
+const $selStage= document.getElementById('sel-stage');
+const $selType = document.getElementById('sel-type');
+const $selGeo  = document.getElementById('sel-geo');
+const $inpInd  = document.getElementById('inp-industry');
+const $apiKey  = document.getElementById('api-key-input');
+const $apiDot  = document.getElementById('api-dot');
+const $tokWrap = document.getElementById('token-wrap');
+
+/* ─── UTILITIES ──────────────────────────────────────────────── */
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function scrollBot(){ $msgs.scrollTop = $msgs.scrollHeight; }
+function hideInput(){ $input.style.display='none'; }
+function showInput(){ $input.style.display='flex'; }
+function getKey(){ return $apiKey.value.trim(); }
+
+function setApiStatus(s){
+  $apiDot.className='api-dot api-'+s;
+  const t={unknown:'Enter API key',ok:'API connected ✓',error:'API error — check key',checking:'Checking…'};
+  $apiDot.title=t[s]||'';
+}
+function recordTokens(type,usage){
+  if(!usage) return;
+  S.tokens_used.total_in  +=(usage.input_tokens||0);
+  S.tokens_used.total_out +=(usage.output_tokens||0);
+  if(S.tokens_used.by_type[type]){
+    S.tokens_used.by_type[type].in  +=(usage.input_tokens||0);
+    S.tokens_used.by_type[type].out +=(usage.output_tokens||0);
+  }
+  updateTokenDisplay();
+}
+function updateTokenDisplay(){
+  const total=S.tokens_used.total_in+S.tokens_used.total_out;
+  const span=$tokWrap.querySelector('.token-total');
+  if(span) span.textContent='Tokens: '+total.toLocaleString();
+  const tip=$tokWrap.querySelector('.token-tip');
+  if(tip){
+    const b=S.tokens_used.by_type;
+    tip.textContent=['Total','  In:  '+S.tokens_used.total_in,'  Out: '+S.tokens_used.total_out,'','Prompts','  In: '+b.draft.in+' Out: '+b.draft.out,'Coach','  In: '+b.coach.in+' Out: '+b.coach.out].join('\n');
+  }
+}
+
+function switchTab(name){
+  document.querySelectorAll('.canvas-tab').forEach(t=>{ t.classList.toggle('active',t.dataset.panel===name); });
+  document.querySelectorAll('.canvas-panel').forEach(p=>{ p.classList.toggle('hidden',p.id!=='panel-'+name); });
+  if(name==='deliverable'){
+    const tab=document.getElementById('tab-deliverable');
+    tab.classList.remove('tab-flash'); void tab.offsetWidth; tab.classList.add('tab-flash');
+  }
+}
+
+function updateProgress(){
+  const total=PROMPT_KEYS.length;
+  const done=PROMPT_KEYS.filter(k=>S.answers[k]!==null).length;
+  const pct=Math.round(done/total*100);
+  $pfill.style.width=pct+'%'; $ppct.textContent=pct+'%';
+}
+
+function populateCard(num,rows){
+  const card=document.getElementById('card-'+num);
+  if(!card) return;
+  const body=card.querySelector('.card-body');
+  body.innerHTML=rows.map(r=>`<div class="card-row${r.flagged?' flagged':''}"><span class="card-label">${esc(r.label)}</span><span class="card-value">${esc(r.value)}</span></div>`).join('');
+  card.classList.add('card-populated');
+  const count=document.querySelectorAll('.card-populated').length;
+  const badge=document.getElementById('badge-answers');
+  badge.textContent=count; badge.style.display='inline-flex';
+}
+
+/* ─── BOT / USER MESSAGES ────────────────────────────────────── */
+function botSay(html,cls,delay){
+  return new Promise(resolve=>{
+    setTimeout(()=>{
+      const wrap=document.createElement('div'); wrap.className='bwrap bot';
+      const bub=document.createElement('div'); bub.className='bubble '+(cls||'bot');
+      bub.innerHTML=html; wrap.appendChild(bub); $msgs.appendChild(wrap); scrollBot(); resolve();
+    },delay!=null?delay:350);
+  });
+}
+function userSay(text){
+  const wrap=document.createElement('div'); wrap.className='bwrap user';
+  const bub=document.createElement('div'); bub.className='bubble user';
+  bub.textContent=text; wrap.appendChild(bub); $msgs.appendChild(wrap); scrollBot();
+}
+function showTyping(){
+  const wrap=document.createElement('div'); wrap.className='bwrap bot'; wrap.id='typing-wrap';
+  wrap.innerHTML='<div class="bubble bot"><div class="typing-indicator"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div></div>';
+  $msgs.appendChild(wrap); scrollBot(); return wrap;
+}
+function hideTyping(){ const t=document.getElementById('typing-wrap'); if(t) t.remove(); }
+
+/* ─── API CALL ───────────────────────────────────────────────── */
+async function callAPI(messages,systemPrompt,maxTokens,tokenType){
+  const key=getKey(); setApiStatus('checking');
+  const tw=showTyping();
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:maxTokens||400,system:systemPrompt,messages})
+    });
+    tw.remove(); const data=await resp.json();
+    if(data.error){ setApiStatus('error'); return null; }
+    setApiStatus('ok'); recordTokens(tokenType||'draft',data.usage);
+    return (data.content&&data.content[0]&&data.content[0].text)||null;
+  }catch(e){ tw.remove(); setApiStatus(key?'error':'unknown'); return null; }
+}
+
+/* ─── INPUT RENDERERS ────────────────────────────────────────── */
+function openInput(){ showInput(); $twrap.style.display='block'; }
+function closeAllInputs(){ hideInput(); $input.querySelectorAll('.pill-group').forEach(g=>g.remove()); }
+
+function renderDynList(promptId){
+  const p=PROMPTS[promptId];
+  const stage=S.effectiveStage||S.stage;
+  const elevated=['early-stage','growth'].includes(stage);
+  const cap=elevated?p.dynCap.elevated:p.dynCap.default;
+  closeAllInputs();
+  $twrap.style.display='block';
+  $ta.style.display='none';
+  $counter.textContent='';
+  // Build dynlist UI
+  const wrap=document.createElement('div'); wrap.className='dynlist-wrap'; wrap.id='dynlist-wrap';
+  const addRow=(idx,val)=>{
+    const row=document.createElement('div'); row.className='dynlist-row';
+    const num=document.createElement('span'); num.className='dynlist-num'; num.textContent=(idx+1)+'.';
+    const inp=document.createElement('input'); inp.className='dynlist-input'; inp.type='text'; inp.placeholder='Add item…'; inp.maxLength=p.charLimit||300; inp.value=val||'';
+    const rm=document.createElement('button'); rm.className='dynlist-rm'; rm.textContent='×';
+    rm.onclick=()=>{ row.remove(); updateDynCount(); };
+    row.appendChild(num); row.appendChild(inp); row.appendChild(rm); return row;
+  };
+  wrap.appendChild(addRow(0,''));
+  const addBtn=document.createElement('button'); addBtn.className='dynlist-add'; addBtn.textContent='+ Add another';
+  addBtn.onclick=()=>{
+    const rows=wrap.querySelectorAll('.dynlist-row');
+    if(rows.length>=cap){ addBtn.textContent='Max '+cap+' items reached'; return; }
+    const newRow=addRow(rows.length,''); wrap.insertBefore(newRow,addBtn); updateDynCount();
+  };
+  wrap.appendChild(addBtn);
+  function updateDynCount(){
+    const rows=wrap.querySelectorAll('.dynlist-row');
+    rows.forEach((r,i)=>{ r.querySelector('.dynlist-num').textContent=(i+1)+'.'; });
+    addBtn.textContent=rows.length>=cap?'Max '+cap+' items reached':'+ Add another';
+    wireSend();
+  }
+  function wireSend(){
+    const vals=Array.from(wrap.querySelectorAll('.dynlist-input')).map(i=>i.value.trim()).filter(Boolean);
+    const newSend=$send.cloneNode(true);
+    $send.parentNode.replaceChild(newSend,newSend.id?newSend:$send);
+    document.getElementById('send-btn').disabled=vals.length<(p.dynMin||1);
+    document.getElementById('send-btn').onclick=()=>{
+      const vals2=Array.from(wrap.querySelectorAll('.dynlist-input')).map(i=>i.value.trim()).filter(Boolean);
+      if(vals2.length<(p.dynMin||1)) return;
+      const joined=vals2.join('; ');
+      closeAllInputs(); userSay(joined); handleAnswer(promptId,joined);
+    };
+    Array.from(wrap.querySelectorAll('.dynlist-input')).forEach(i=>i.oninput=wireSend);
+  }
+  // Clear old dynlist if present
+  const old=document.getElementById('dynlist-wrap'); if(old) old.remove();
+  $twrap.insertBefore(wrap,$ta);
+  $skip.style.display='block'; $skip.textContent='Skip for now';
+  wireSend(); showInput();
+}
+
+function renderDropdown(promptId){
+  const p=PROMPTS[promptId]; closeAllInputs();
+  $twrap.style.display='block'; $ta.style.display='none'; $counter.textContent='';
+  const old=document.getElementById('prompt-dropdown'); if(old) old.remove();
+  const sel=document.createElement('select'); sel.className='prompt-dropdown'; sel.id='prompt-dropdown';
+  const blank=document.createElement('option'); blank.value=''; blank.textContent='— select one —'; sel.appendChild(blank);
+  p.options.forEach(opt=>{ const o=document.createElement('option'); o.value=opt; o.textContent=opt; sel.appendChild(o); });
+  $twrap.insertBefore(sel,$ta);
+  // For P4 — pre-fill suggestion
+  if(promptId==='P4' && S.p4Suggested){
+    sel.value=S.p4Suggested;
+    botSay('Based on your top time drain, I\'d suggest: <strong>'+esc(S.p4Suggested)+'</strong> — but it\'s your call. Confirm or pick a different one.','hint',0);
+  }
+  const newSend=$send.cloneNode(true);
+  $send.parentNode.replaceChild(newSend,$send);
+  document.getElementById('send-btn').disabled=true;
+  sel.onchange=()=>{ document.getElementById('send-btn').disabled=!sel.value; };
+  document.getElementById('send-btn').onclick=()=>{
+    if(!sel.value) return;
+    closeAllInputs(); userSay(sel.value); handleAnswer(promptId,sel.value);
+  };
+  $skip.style.display='block'; $skip.textContent='Skip for now';
+  showInput();
+}
+
+function renderMultiSelect(promptId){
+  const p=PROMPTS[promptId]; closeAllInputs();
+  $twrap.style.display='none';
+  const group=document.createElement('div'); group.className='pill-group'; group.id='multiselect-group';
+  const selected=new Set();
+  p.options.forEach(opt=>{
+    const btn=document.createElement('button');
+    btn.className='pill'+(opt===p.exclusiveOption?' exclusive':'');
+    btn.textContent=opt;
+    btn.onclick=()=>{
+      if(opt===p.exclusiveOption){
+        if(selected.has(opt)){ selected.delete(opt); btn.classList.remove('selected'); }
+        else {
+          selected.clear(); selected.add(opt);
+          group.querySelectorAll('.pill').forEach(b=>b.classList.remove('selected'));
+          btn.classList.add('selected');
+        }
+      } else {
+        const excBtn=Array.from(group.querySelectorAll('.pill.exclusive')).find(b=>b.textContent===p.exclusiveOption);
+        if(selected.has(p.exclusiveOption)){ selected.delete(p.exclusiveOption); if(excBtn) excBtn.classList.remove('selected'); }
+        if(selected.has(opt)){ selected.delete(opt); btn.classList.remove('selected'); }
+        else { selected.add(opt); btn.classList.add('selected'); }
+      }
+      // enable send
+      document.getElementById('send-btn').disabled=selected.size===0;
+    };
+    group.appendChild(btn);
+  });
+  $input.insertBefore(group,$input.firstChild);
+  const newSend=$send.cloneNode(true);
+  $send.parentNode.replaceChild(newSend,$send);
+  document.getElementById('send-btn').disabled=true;
+  document.getElementById('send-btn').onclick=()=>{
+    const vals=Array.from(selected);
+    if(vals.length===0) return;
+    const joined=vals.join(', ');
+    closeAllInputs(); userSay(joined); handleAnswer(promptId,joined);
+  };
+  $skip.style.display='block'; $skip.textContent='Skip for now';
+  showInput();
+}
+
+/* ─── PROMPT PRESENTATION ────────────────────────────────────── */
+async function renderPrompt(promptId){
+  const p=PROMPTS[promptId];
+  $pstep.textContent=p.name;
+  // show question bubble
+  let bubbleHtml='<span>'+esc(p.hint)+'</span>';
+  if(p.example){
+    bubbleHtml+='<div class="bubble-action-row"><button class="bubble-btn" data-action="example" data-prompt="'+promptId+'">💡 Example</button>';
+    if(p.notSure) bubbleHtml+='<button class="bubble-btn" data-action="notsure" data-prompt="'+promptId+'">❓ Not sure</button>';
+    bubbleHtml+='</div>';
+  }
+  await botSay(bubbleHtml,'bot',300);
+  if(p.type==='dynlist')      renderDynList(promptId);
+  else if(p.type==='dropdown') renderDropdown(promptId);
+  else if(p.type==='multiselect') renderMultiSelect(promptId);
+  // wire skip
+  const skipEl=document.getElementById('skip-btn');
+  const newSkip=skipEl.cloneNode(true);
+  skipEl.parentNode.replaceChild(newSkip,skipEl);
+  document.getElementById('skip-btn').onclick=()=>handleSkip(promptId);
+}
+
+// Bubble action delegation (example / not sure buttons)
+$msgs.addEventListener('click',function(e){
+  const btn=e.target.closest('[data-action]'); if(!btn) return;
+  const action=btn.dataset.action, pid=btn.dataset.prompt;
+  const p=PROMPTS[pid]; if(!p) return;
+  btn.disabled=true; btn.style.opacity='.4';
+  if(action==='example' && p.example){
+    botSay('<em>Example:</em> '+esc(p.example),'hint',0);
+  }
+  if(action==='notsure'){
+    const count=S.notSureCounts[pid]||0;
+    const moves=p.notSure.moves;
+    const move=moves[Math.min(count,moves.length-1)];
+    // For P4, replace synthesis token
+    const txt=move.replace('[synthesized_category]',S.p4Suggested||'Financial');
+    botSay(esc(txt),'bot',200);
+    S.notSureCounts[pid]=(count+1);
+  }
+});
+
+/* ─── ANSWER HANDLERS ────────────────────────────────────────── */
+function handleAnswer(promptId,value){
+  S.answers[promptId]=value;
+  // Post-store processing
+  if(promptId==='P1') deriveP4Suggestion(value);
+  if(promptId==='P4' && !S.answers.P4) S.answers.P4=S.p4Suggested;
+  updateProgress(); populateCards(promptId);
+  maybeProbe(promptId,value);
+}
+
+function handleSkip(promptId){
+  S.skips[promptId]=(S.skips[promptId]||0)+1;
+  if(S.skips[promptId]===1){
+    botSay('No problem — we\'ll revisit this before building.','hint',0);
+  }
+  S.answers[promptId]=null;
+  closeAllInputs(); userSay('Skip for now');
+  advance(promptId);
+}
+
+function deriveP4Suggestion(p1value){
+  const t=p1value.toLowerCase();
+  if(/invoice|payment|paid|billing|accounting|money|financial/.test(t))      S.p4Suggested='Financial';
+  else if(/schedul|booking|calendar|appointment/.test(t))                     S.p4Suggested='Operations';
+  else if(/email|messaging|communication|reach out|follow.?up/.test(t))      S.p4Suggested='Productivity & Communication';
+  else if(/client|customer|crm|contact|lead|prospect/.test(t))               S.p4Suggested='Customer Management';
+  else if(/social|marketing|ads|newsletter|email list/.test(t))              S.p4Suggested='Marketing';
+  else if(/security|compliance|integration|connect|sync|automate/.test(t))   S.p4Suggested='Compliance, Security & Integration';
+  else S.p4Suggested='Financial'; // default per Foundation logic
+}
+
+function populateCards(promptId){
+  if(promptId==='P1'){
+    populateCard(1,[
+      {label:'Top drain', value:extractTopDrain(), flagged:false},
+      {label:'Stage', value:stageLabel(), flagged:false},
+      {label:'Type', value:S.businessType||'—', flagged:false}
+    ]);
+  }
+  if(promptId==='P4'){ populateCard(2,[{label:'Priority', value:S.answers.P4||S.p4Suggested||'—', flagged:false}]); }
+  if(promptId==='P2'||promptId==='P3'||promptId==='P6'){
+    populateCard(3,[{label:'Foundation', value:deriveFoundationStatus(), flagged:deriveFoundationStatus()==='Not yet set'},{label:'Tools in use', value:countToolsLabel(), flagged:false}]);
+  }
+  if(promptId==='P5'){ populateCard(1,[{label:'Top drain',value:extractTopDrain(),flagged:false},{label:'Stage',value:stageLabel(),flagged:false},{label:'Budget',value:S.answers.P5||'—',flagged:false}]); }
+}
+
+/* ─── GAP PROBES (§12) ───────────────────────────────────────── */
+function maybeProbe(promptId,value){
+  const v=(value||'').toLowerCase();
+  // P1 vague/missing
+  if(promptId==='P1' && !S._p1ProbeUsed && (!value || v.split(/\s+/).length < 3)){
+    S._p1ProbeUsed=true;
+    botSay('Tell me a bit more — what eats the time there?','coach',300);
+  }
+  // P2 vague
+  if(promptId==='P2' && !S._p2ProbeUsed && /^(the usual|apps|nothing|not sure|n\/a)/i.test(v)){
+    S._p2ProbeUsed=true;
+    botSay('Which ones specifically? Even the basics count.','coach',300);
+  }
+  // P2 overlap — Early Stage / Growth
+  if(promptId==='P2' && !S._overlapProbeUsed && ['early-stage','growth'].includes(S.effectiveStage)){
+    const tools=(value||'').split(/[;,]/);
+    if(tools.length>=2){ S._overlapProbeUsed=true; botSay('Are any two of these doing the same job?','coach',300); }
+  }
+  // P3 "None of these yet" — warm, no fix-probe
+  if(promptId==='P3' && value==='None of these yet'){
+    botSay('Got it — building your payment and communication foundation will likely be the first priority.','hint',300);
+  }
+  // P6 vague
+  if(promptId==='P6' && !S._p6ProbeUsed && /everything|all|everything should|connect everything/i.test(v)){
+    S._p6ProbeUsed=true;
+    botSay('Which one connection would save the most time?','coach',300);
+  }
+  advance(promptId);
+}
+
+/* ─── ADVANCE / ASKNEXT ──────────────────────────────────────── */
+function advance(promptId){ askNext(); }
+
+function askNext(){
+  if(S.generated) return;
+  // Find next unanswered prompt — resurfaced skips deferred to Review Moment
+  const next=PROMPT_KEYS.find(k=>S.answers[k]===null && (S.skips[k]||0)===0);
+  if(next){ renderPrompt(next); return; }
+  // All answered (or skipped once) — Review Moment
+  renderReviewMoment();
+}
+
+/* ─── REVIEW MOMENT (§7) ─────────────────────────────────────── */
+async function renderReviewMoment(){
+  $pstep.textContent='Review';
+  const chips=buildChipsHtml();
+  await botSay(REVIEW.step1+'<br><br>'+chips+'<br><br>'+esc(REVIEW.step2),'bot',400);
+  renderPills([
+    {label:'✓ That\'s right — build my checklist', action:async()=>{ await botSay(esc(REVIEW.step3A),'hint',200); triggerGeneration(); }},
+    {label:'✏ I want to change something',         action:()=>startEditCycle()}
+  ]);
+}
+
+function startEditCycle(){
+  botSay(esc(REVIEW.step3B),'bot',200).then(()=>{
+    openTextInput('review-edit',null,'What would you like to change?',false);
+    wireTextSend('review-edit',(val)=>{
+      closeAllInputs(); userSay(val);
+      botSay(esc(REVIEW.step3C),'hint',200).then(()=>{
+        botSay(esc(REVIEW.step3A),'hint',200).then(()=>triggerGeneration());
+      });
+    });
+  });
+}
+
+function openTextInput(promptId,charLimit,placeholder,showSkip){
+  $twrap.style.display='block'; $ta.style.display='block';
+  const old=document.getElementById('dynlist-wrap'); if(old) old.remove();
+  const old2=document.getElementById('prompt-dropdown'); if(old2) old2.remove();
+  $ta.value=''; $ta.maxLength=charLimit||10000;
+  $ta.placeholder=placeholder||'Share your thoughts…';
+  $counter.textContent=charLimit?'0 / '+charLimit:'';
+  $counter.className='char-counter';
+  $skip.style.display=showSkip?'block':'none';
+  const newSend=$send.cloneNode(true);
+  $send.parentNode.replaceChild(newSend,$send);
+  document.getElementById('send-btn').disabled=true;
+  $ta.oninput=function(){
+    const len=$ta.value.length;
+    if(charLimit){ $counter.textContent=len+' / '+charLimit; $counter.className='char-counter'+(len>=charLimit?' at-limit':len>=charLimit*.85?' near-limit':''); }
+    document.getElementById('send-btn').disabled=$ta.value.trim().length===0;
+  };
+  showInput(); setTimeout(()=>$ta.focus(),60);
+}
+
+function wireTextSend(promptId,cb){
+  document.getElementById('send-btn').onclick=()=>{
+    const val=$ta.value.trim(); if(!val) return;
+    cb(val);
+  };
+}
+
+function renderPills(pills){
+  $input.querySelectorAll('.pill-group').forEach(g=>g.remove());
+  $twrap.style.display='none';
+  const group=document.createElement('div'); group.className='pill-group';
+  pills.forEach(p=>{
+    const btn=document.createElement('button'); btn.className='pill navy';
+    btn.textContent=p.label;
+    btn.onclick=()=>{ group.remove(); $twrap.style.display='block'; userSay(p.label); p.action(); };
+    group.appendChild(btn);
+  });
+  $input.insertBefore(group,$input.firstChild);
+  $skip.style.display='none'; showInput();
+}
+
+/* ─── TOKEN DERIVATION ───────────────────────────────────────── */
+function extractTopDrain(){
+  const a=S.answers.P1;
+  if(!a) return 'Not yet identified';
+  const first=a.split(/[;,]/)[0].trim();
+  return first.length>30?first.substring(0,27)+'…':first;
+}
+function stageLabel(){
+  const m={'just-exploring':'Just Exploring','pre-launch':'Pre-Launch','early-stage':'Early Stage','growth':'Growth','established':'Established'};
+  return m[S.stage]||S.stage||'—';
+}
+function effectiveStageLabel(){
+  const es=S.effectiveStage||S.stage;
+  const m={'just-exploring':'Just Exploring','pre-launch':'Pre-Launch','early-stage':'Early Stage','growth':'Growth'};
+  return m[es]||es||'—';
+}
+function deriveFoundationStatus(){
+  const p3=S.answers.P3||'';
+  if(p3==='None of these yet') return 'Not yet set';
+  const parts=p3.split(',').map(s=>s.trim()).filter(Boolean);
+  const hasPayment=parts.some(p=>/get paid|payment/i.test(p));
+  const hasComms=parts.some(p=>/email|domain|phone|scheduling/i.test(p));
+  if(hasPayment&&hasComms) return 'Solid';
+  if(hasPayment||hasComms) return 'Half set';
+  if(!p3) return 'Needs a look';
+  return 'Half set';
+}
+function countToolsLabel(){
+  const a=S.answers.P2||'';
+  if(!a) return '0 tools';
+  const count=a.split(/[;,]/).filter(s=>s.trim()).length;
+  return count+' tool'+(count!==1?'s':'');
+}
+function deriveBudgetLabel(){ return S.answers.P5||'—'; }
+
+/* §7.5 Coverage Tier derivation — P3 → P2 → P6, first match wins */
+function deriveCoverageTier(){
+  const fs=deriveFoundationStatus();
+  if(fs==='Not yet set') return { tier:'Foundation Set', rationale:"Payment and a professional way to communicate aren't set yet — that's where your stack begins." };
+  // Check if stage-relevant categories are covered
+  const es=S.effectiveStage||S.stage;
+  const p2=(S.answers.P2||'').toLowerCase();
+  const p6=(S.answers.P6||'').toLowerCase();
+  const hasIntegrationGap=p6&&p6.length>3&&!/^(none|no|n\/a|skip)$/i.test(p6.trim());
+  const relevantCategories=Object.keys(CATEGORY_GATES).filter(c=>CATEGORY_GATES[c][es]);
+  const coveredCount=relevantCategories.filter(c=>{
+    const keywords={'Productivity & Communication':['email','calendar','slack','notion','google','microsoft'],Financial:['quickbooks','wave','stripe','square','paypal','xero','accounting','invoic'],CustomerManagement:['crm','hubspot','salesforce','pipedrive','contact'],Marketing:['mailchimp','klaviyo','marketing','email list','newsletter'],Operations:['shipbob','shopify','woo','inventory','scheduling','order'],ComplianceSecurityIntegration:['zapier','make','integration','security','compliance','a2x']};
+    const catKey=c.replace(/[^a-zA-Z]/g,'');
+    const kws=keywords[catKey]||[];
+    return kws.some(k=>p2.includes(k));
+  });
+  const covRatio=relevantCategories.length>0?coveredCount/relevantCategories.length:0;
+  if(covRatio<0.5 || hasIntegrationGap){
+    return { tier:'Building', rationale:'Your tools are in motion, but '+(hasIntegrationGap?'there\'s a manual bridge that still needs connecting.':'one or more core categories are uncovered or handled manually.') };
+  }
+  if(!hasIntegrationGap && covRatio>=0.7){
+    return { tier:'Connected', rationale:'Covered and connected — '+(S.answers.P4?'the one refinement that takes it further: tighten your '+S.answers.P4.toLowerCase()+' setup.':'keep auditing for the one link that can be automated.') };
+  }
+  return { tier:'Building', rationale:'Your tools are in motion, but there are gaps or manual bridges to close.' };
+}
+
+/* §8.2 Q2 condition evaluation */
+function deriveQ2Condition(){
+  const fs=deriveFoundationStatus();
+  if(fs==='Not yet set') return 'foundation';
+  const p4=S.answers.P4||S.p4Suggested||'';
+  const p2l=(S.answers.P2||'').toLowerCase();
+  const catKey=p4.replace(/[^a-zA-Z]/g,'').toLowerCase();
+  const catCovered={'productivity&communication':['email','calendar','google','microsoft','slack'],'financial':['quickbooks','wave','stripe','square','xero','invoic'],'customermanagement':['crm','hubspot','salesforce','contact'],'marketing':['mailchimp','klaviyo','newsletter'],'operations':['shopify','inventory','order','ship','scheduling'],'compliancesecurityintegration':['zapier','make','integration','a2x']};
+  const covered=(catCovered[catKey]||[]).some(k=>p2l.includes(k));
+  if(!covered && p4) return 'priority-uncovered';
+  const p6=(S.answers.P6||'').trim();
+  if(p6 && !/^(none|no|n\/a|skip|nothing)$/i.test(p6)) return 'integration';
+  const es=S.effectiveStage||S.stage;
+  if(['early-stage','growth'].includes(es)){
+    const tools=(S.answers.P2||'').split(/[;,]/).map(s=>s.trim()).filter(Boolean);
+    if(tools.length>=4) return 'overlap';
+  }
+  return 'connected';
+}
+
+function buildChipsHtml(){
+  const chips=[
+    {key:'Stage',val:stageLabel()},
+    {key:'Type',val:S.businessType||'—'},
+    {key:'Geo',val:S.geoScope||'—'},
+    {key:'Top drain',val:extractTopDrain(),flagged:!S.answers.P1},
+    {key:'Priority',val:S.answers.P4||S.p4Suggested||'—',flagged:!S.answers.P4},
+    {key:'Budget',val:S.answers.P5||'—',flagged:!S.answers.P5}
+  ];
+  return '<div class="chips-row" style="flex-wrap:wrap;gap:6px;">'+chips.map(c=>`<span class="snap-chip chip-stage${c.flagged?' chip-flagged':''}"><span class="chip-key">${esc(c.key)}</span>${esc(c.val)}</span>`).join('')+'</div>';
+}
+
+/* ─── GENERATION ─────────────────────────────────────────────── */
+function triggerGeneration(){
+  S.generated=true; closeAllInputs();
+  populateCard(4,[{label:'Tier', value:deriveCoverageTier().tier, flagged:false}]);
+  const q2c=deriveQ2Condition();
+  const q2=COACH_Q2_BANK.find(q=>q.condition===q2c)||COACH_Q2_BANK[4];
+  populateCard(5,[{label:'Q2 condition', value:q2c, flagged:false}]);
+  populateCard(6,[{label:'Forward', value:'Module 7, Section 2', flagged:false}]);
+  const stageFilter=['just-exploring','pre-launch'].includes(S.effectiveStage||S.stage);
+  populateCard(7,[{label:'Terms included', value:stageFilter?'Yes (5 terms)':'Omitted for this stage', flagged:false}]);
+  switchTab('deliverable');
+  document.getElementById('deliv-empty').style.display='none';
+  document.getElementById('deliv-content').classList.remove('hidden');
+  renderDeliv();
+  setTimeout(()=>enterCoachMode(),1200);
+}
+
+
+
+/* ─── RENDERDELIV — FIVE ZONES ───────────────────────────────── */
+function renderDeliv(){
+  const es=S.effectiveStage||S.stage;
+  const stageL=effectiveStageLabel();
+  const bt=S.businessType||'—';
+  const geo=S.geoScope||'—';
+  const drain=extractTopDrain();
+  const priority=S.answers.P4||S.p4Suggested||'—';
+  const budget=deriveBudgetLabel();
+  const p2=(S.answers.P2||'');
+  const p3=(S.answers.P3||'');
+  const p6=(S.answers.P6||'');
+
+  /* ── Zone 1 — Profile Snapshot ── */
+  const chips=[
+    {key:'Stage',val:stageL,cls:'chip-stage'},
+    {key:'Business type',val:bt,cls:'chip-type'},
+    {key:'Geographic scope',val:geo,cls:'chip-geo'},
+    {key:'Top time drain',val:drain,cls:'chip-drain',flagged:!S.answers.P1},
+    {key:'Priority',val:priority,cls:'chip-priority',flagged:!S.answers.P4},
+    {key:'Budget band',val:budget,cls:'chip-budget',flagged:!S.answers.P5}
+  ];
+  document.getElementById('z1-chips').innerHTML=chips.map(c=>
+    `<span class="snap-chip ${c.cls}${c.flagged?' chip-flagged':''}"><span class="chip-key">${esc(c.key)}</span>${esc(c.val)}</span>`
+  ).join('');
+
+  /* ── Zone 2 — Core Tech Stack Checklist ── */
+  // Build rows — priority first, then rest in gating order, omitted shown as "coming as you grow"
+  const ALL_CATS=['Productivity & Communication','Financial','Customer Management','Marketing','Operations','Compliance, Security & Integration'];
+  // §6.5 Rule A: Pre-Launch priority surfacing
+  const showCats=new Set();
+  ALL_CATS.forEach(c=>{
+    if(CATEGORY_GATES[c][es]) showCats.add(c);
+    // Rule A: if priority is a normally-omitted category at pre-launch, include it
+    if(es==='pre-launch' && priority===c) showCats.add(c);
+  });
+  const omitted=ALL_CATS.filter(c=>!showCats.has(c));
+
+  // Status flag derivation (§6)
+  function getStatusFlag(cat){
+    const p2l=p2.toLowerCase();
+    const p3l=p3.toLowerCase();
+    // Foundation check for Productivity & Communication and Financial
+    if(cat==='Financial'){
+      const foundationStatus=deriveFoundationStatus();
+      if(foundationStatus==='Not yet set') return {label:'GAP',cls:'flag-red'};
+      const hasPaymentTool=/venmo|paypal|stripe|square|quickbooks|wave|xero|payment/i.test(p2l);
+      if(hasPaymentTool) return /integration|automat|connect/i.test(p6.toLowerCase())?{label:'ON TRACK',cls:'flag-green'}:{label:'REVIEW',cls:'flag-amber'};
+      return {label:'GAP',cls:'flag-red'};
+    }
+    if(cat==='Productivity & Communication'){
+      const hasEmail=/email|gmail|outlook|yahoo|professional/.test(p2l)||/professional email|domain/i.test(p3l);
+      const hasSchedul=/calendly|scheduling|calendar|acuity/i.test(p2l);
+      if(hasEmail&&hasSchedul) return {label:'ON TRACK',cls:'flag-green'};
+      if(hasEmail||hasSchedul) return {label:'REVIEW',cls:'flag-amber'};
+      if(!showCats.has(cat)) return {label:'OPPORTUNITY',cls:'flag-blue'};
+      return {label:'REVIEW',cls:'flag-amber'};
+    }
+    // For others: check if tool mentioned in P2
+    const catKeywords={'Customer Management':['crm','hubspot','salesforce','pipedrive','contact list'],'Marketing':['mailchimp','klaviyo','newsletter','marketing'],'Operations':['shopify','woocommerce','inventory','shipbob','order'],'Compliance, Security & Integration':['zapier','make','integration','a2x','security']};
+    const kws=catKeywords[cat]||[];
+    const mentioned=kws.some(k=>p2l.includes(k));
+    if(mentioned){
+      const hasIntGap=p6&&p6.length>3&&!/^(none|no|n\/a|skip)$/i.test(p6.trim());
+      return hasIntGap?{label:'REVIEW',cls:'flag-amber'}:{label:'ON TRACK',cls:'flag-green'};
+    }
+    if(es==='just-exploring') return {label:'OPPORTUNITY',cls:'flag-blue'};
+    return {label:'OPPORTUNITY',cls:'flag-blue'};
+  }
+
+  // Tool-fit descriptors (illustrative, filtered by budget band per §6)
+  function getToolFit(cat){
+    const budg=budget;
+    const lean=budg==='Under $50/mo';
+    const mid=budg==='$50–150/mo';
+    const descriptors={
+      'Productivity & Communication':{
+        service: lean?'Free email/calendar tier + a free scheduling link (e.g., Calendly free plan) to end the email back-and-forth.':mid?'Business email on your domain + a scheduling tool that syncs your calendar.':'Productivity suite (e.g., Google Workspace or Microsoft 365) + team calendar and scheduling.',
+        product: lean?'Business email + a free scheduling tool.':'Business email on your domain + a scheduling tool (e.g., Calendly) + basic file sharing.',
+        ecommerce:lean?'Business email + free scheduling link.':'Business email on your domain + a shared inbox tool for multi-channel customer comms.'
+      },
+      Financial:{
+        service: lean?'A free invoicing + payment tool (e.g., Wave free tier, or Square pay-as-you-go).':mid?'Simple accounting + invoicing tool (e.g., QuickBooks Simple Start or FreshBooks).':'Full accounting tool (e.g., QuickBooks) — invoicing, expenses, and bank feed.',
+        product: lean?'Simple invoicing tool with payment processing.':mid?'Inventory-aware accounting (e.g., QuickBooks with inventory) + a business payment account.':'Full accounting + inventory management + a business payment gateway.',
+        ecommerce:lean?'Payment processor connected to your storefront (e.g., Stripe or Square).':mid?'E-commerce platform with built-in payments + basic accounting tool.':'Storefront + accounting (e.g., QuickBooks) + a settlement connector (e.g., A2X for Amazon/Shopify).'
+      },
+      'Customer Management':{
+        service: lean?'A simple contact list or free CRM tier (e.g., HubSpot free).':mid?'CRM with pipeline tracking (e.g., HubSpot Starter or Zoho CRM).':'CRM with automation and email sequences (e.g., HubSpot Growth).',
+        product: lean?'Contact spreadsheet or free CRM for B2B reorder tracking.':mid?'Lightweight CRM for managing distributor and B2B relationships.':'Full CRM with deal tracking and order history.',
+        ecommerce:lean?'Customer email list in your e-commerce platform.':mid?'E-commerce-native CRM or loyalty tool (e.g., Klaviyo contact profiles).':'Multi-channel CRM with order history and segmentation (e.g., Gorgias + Klaviyo).'
+      },
+      Marketing:{
+        service: lean?'Free email marketing tier (e.g., Mailchimp free up to 500 contacts).':mid?'Email marketing tool with basic automation (e.g., Mailchimp or ConvertKit).':'Email + social scheduling + basic analytics (e.g., Mailchimp + Buffer).',
+        product: lean?'Free email marketing for launch list.':mid?'Email marketing + social scheduling.':'Email marketing + social + paid-ad tracking.',
+        ecommerce:lean?'Your storefront\'s built-in email tool.':mid?'Dedicated email marketing (e.g., Klaviyo) for cart abandonment and post-purchase flows.':'Klaviyo or equivalent — flows, segmentation, and revenue attribution.'
+      },
+      Operations:{
+        service: lean?'A free scheduling tool so clients book themselves (e.g., Calendly).':mid?'Online scheduling + a basic project tracker (e.g., Asana free or Trello).':'Scheduling + project management + a light workflow tool.',
+        product: lean?'A lightweight inventory tracker (spreadsheet-based or free tier).':mid?'Basic inventory tool that connects to your accounting (e.g., inFlow or Craftybase).':'Inventory + order management system connected to your accounting and fulfillment.',
+        ecommerce:lean?'Your storefront handles basic order management.':mid?'Fulfillment + order tracking tool (e.g., ShipStation or ShipBob).':'Full fulfillment platform + returns management + order sync to accounting.'
+      },
+      'Compliance, Security & Integration':{
+        service: lean?'Identify the one manual handoff to automate first; native integrations before third-party connectors.':mid?'One automation (e.g., Zapier free tier or Make) for your highest-volume manual task.':'Automation platform (e.g., Zapier or Make) + password manager + basic cybersecurity review.',
+        product: lean?'Native integrations between your inventory and accounting tools before adding a connector.':mid?'One integration: orders → accounting. Use a native connection if available.':'Full integration layer: orders → accounting → fulfillment → CRM.',
+        ecommerce:lean?'Your storefront likely has native integrations — use them before adding connectors.':mid?'Settlement connector (e.g., A2X) to get marketplace payouts into accounting automatically.':'Full integration stack: storefront + marketplace + accounting + fulfillment + CRM, connected.'
+      }
+    };
+    const typeKey=(S.businessType||'service').toLowerCase().replace('-','');
+    const typeMap={service:'service',product:'product',ecommerce:'ecommerce'};
+    const t=typeMap[typeKey]||'service';
+    return (descriptors[cat]&&descriptors[cat][t])||'Recommended tool fit for your stage and budget.';
+  }
+
+  // Build priority row first, then others
+  const priorityCat=priority!=='—'?priority:'Financial';
+  const orderedCats=[priorityCat,...Array.from(showCats).filter(c=>c!==priorityCat)];
+
+  let tableHtml=`<table class="checklist-table">
+    <thead><tr><th style="width:38%">Category</th><th>Recommended tool fit (${esc(budget)})</th><th style="width:100px">Status</th></tr></thead><tbody>`;
+  orderedCats.forEach(cat=>{
+    const flag=getStatusFlag(cat);
+    const fit=getToolFit(cat);
+    const isPriority=cat===priorityCat;
+    tableHtml+=`<tr class="${isPriority?'priority-row':''}">
+      <td><span class="cat-name">${isPriority?'✓ ':''}<strong>${esc(cat)}</strong>${isPriority?'<span class="priority-badge">PRIORITY</span>':''}</span></td>
+      <td><span style="font-size:12px;line-height:1.5;">${esc(fit)}</span></td>
+      <td><span class="flag ${flag.cls}">${flag.label}</span></td>
+    </tr>`;
+  });
+  if(omitted.length>0){
+    tableHtml+=`<tr class="coming-row"><td colspan="3">Coming as you grow: ${esc(omitted.join(', '))} unlock as you grow.</td></tr>`;
+  }
+  tableHtml+=`</tbody></table>`;
+  tableHtml+=`<p class="z2-note">Tool names are illustrative examples, not endorsements. One tool per job beats five used poorly.</p>`;
+  document.getElementById('z2-content').innerHTML=tableHtml;
+
+  /* ── Zone 3 — Coverage Tier ── */
+  const {tier,rationale}=deriveCoverageTier();
+  const stops=['Foundation Set','Building','Connected'];
+  const tierHtml=`<div class="tier-track">
+    ${stops.map((s,i)=>`<div class="tier-stop${s===tier?' active':''}${i===stops.length-1?' last':''}">${esc(s)}</div>`).join('')}
+  </div>
+  <div class="tier-rationale"><strong>Why:</strong> ${esc(rationale)}</div>`;
+  document.getElementById('z3-content').innerHTML=tierHtml;
+
+  /* ── Zone 4 — Coach Moment (exactly 2 questions) ── */
+  const q1data=COACH_Q1[es]||COACH_Q1['growth'];
+  const q2cond=deriveQ2Condition();
+  const q2data=COACH_Q2_BANK.find(q=>q.condition===q2cond)||COACH_Q2_BANK[4];
+  let q2text=q2data.q
+    .replace('[priority_category]',priority)
+    .replace('[integration_task]',p6.split(/[;,]/)[0].trim()||'information');
+  const z4Html=`
+    <div class="coach-block"><div class="coach-block-label">Stage-specific</div>
+      <div class="coach-q-text">${esc(q1data.q)}</div>
+      <div class="coach-q-source"><em>Source: ${esc(q1data.source)}</em></div>
+    </div>
+    <div class="coach-block"><div class="coach-block-label">Gap-specific</div>
+      <div class="coach-q-text">${esc(q2text)}</div>
+      <div class="coach-q-source"><em>Source: ${esc(q2data.source)}</em></div>
+    </div>`;
+  document.getElementById('z4-content').innerHTML=z4Html;
+
+  /* ── Zone 5 — What's Next ── */
+  // §9.1 Session-specific actions
+  const a1=`${esc(priority)} — ${esc(deriveAction1(priority))}`;
+  const a2=esc(deriveAction2());
+  const a3=esc(deriveAction3());
+  const foundMissing=deriveFoundationStatus()==='Not yet set';
+  const a4=foundMissing?'Set up one simple way to get paid and one professional way to communicate before anything else.':'';
+  const actionsHtml=[
+    `<div class="z5-action"><strong>${esc(priority)}:</strong> ${esc(deriveAction1(priority))}</div>`,
+    `<div class="z5-action">${esc(deriveAction2())}</div>`,
+    `<div class="z5-action">${esc(deriveAction3())}</div>`,
+    foundMissing?`<div class="z5-action" style="color:var(--red)"><strong>Foundation first:</strong> Set up one simple way to get paid and one professional way to communicate before anything else.</div>`:''
+  ].join('');
+  // §9.2 Forward bridge — Module 7 Section 2 (adjusted from Module 6)
+  const navHtml=`<div class="nav-label">Up Next</div><div class="nav-forward">Next in Module 7: Productivity and Communication Tools — it builds on the core stack you just mapped.</div>`;
+  // Terms to Know — §9.3 stage filter
+  const includeTerms=['just-exploring','pre-launch'].includes(es);
+  let termsHtml='';
+  if(includeTerms){
+    const terms=[...TERMS.core];
+    // Add priority-conditional term
+    if(TERMS.conditional[priority]) terms.push(TERMS.conditional[priority]);
+    termsHtml=`<div class="terms-block"><div class="terms-label">Terms to Know</div><dl class="terms-grid">
+      ${terms.map(t=>`<div class="term-row"><dt>${esc(t.term)}:</dt><dd>${esc(t.def)}</dd></div>`).join('')}
+    </dl></div>`;
+  }
+  document.getElementById('z5-content').innerHTML=`
+    <div class="z5-cols">
+      <div><div class="z5-col-label">Business Actions This Week</div>${actionsHtml}</div>
+      <div><div class="z5-col-label">Platform Navigation</div><div class="z5-nav">${navHtml}</div></div>
+    </div>${termsHtml}`;
+
+  /* ── Boundaries ── */
+  document.getElementById('boundaries-block').innerHTML=`<p>${esc(BOUNDARIES.p1)}</p><p>${esc(BOUNDARIES.p2)}</p>`;
+}
+
+/* §9.1 Action derivation — session-specific */
+function deriveAction1(priority){
+  const bt=(S.businessType||'service').toLowerCase();
+  const budget=deriveBudgetLabel();
+  const lean=budget==='Under $50/mo';
+  const actionMap={
+    'Financial':bt==='ecommerce'?'Wire your payment processor to your accounting tool so sales stop living in a spreadsheet.':lean?'Set up a free invoicing + payment tool so business income stays separate from personal.':'Set up your accounting tool and open a business payment account before your next invoice.',
+    'Productivity & Communication':'Add a scheduling link so clients book themselves — then set up a professional email on your domain.',
+    'Customer Management':'Set up a free CRM tier to track your clients — even a simple contact list with follow-up notes beats your memory.',
+    'Marketing':'Set up your email list now, before you have customers. One signup form on your site is all it takes to start.',
+    'Operations':bt==='product'?'Connect your orders to your inventory tool so you stop tracking stock by hand.':'Set up a scheduling tool so bookings, reminders, and calendar blocks happen automatically.',
+    'Compliance, Security & Integration':'Identify the one manual handoff you do most often and set up a native integration — or a simple Zapier automation — to handle it.'
+  };
+  return actionMap[priority]||'Set up the tool that covers your priority category this week.';
+}
+function deriveAction2(){
+  const drain=S.answers.P1?S.answers.P1.split(/[;,]/)[0].trim():'your biggest time drain';
+  const p6=(S.answers.P6||'').trim();
+  if(p6&&!/^(none|no|n\/a|skip|nothing)$/i.test(p6)){
+    const task=p6.split(/[;,]/)[0].trim();
+    return task+' — set up the connection once and it pays you back every week.';
+  }
+  return drain+' — find the one tool that ends that specific task and set it up this week.';
+}
+function deriveAction3(){
+  const fs=deriveFoundationStatus();
+  if(fs==='Not yet set') return 'Set up your payment foundation first — one invoicing tool, one professional email. Everything else builds on these two.';
+  if(fs==='Half set') return 'You\'ve got half the foundation. Add the missing piece — payment method or professional email — this week.';
+  // Next flagged category
+  const es=S.effectiveStage||S.stage;
+  const p2l=(S.answers.P2||'').toLowerCase();
+  const allVisible=Object.keys(CATEGORY_GATES).filter(c=>CATEGORY_GATES[c][es]);
+  const uncovered=allVisible.find(c=>{
+    const kws={'Productivity & Communication':['email','gmail','professional'],'Financial':['quickbooks','wave','stripe','square','invoic'],'Customer Management':['crm','hubspot','contact'],'Marketing':['mailchimp','klaviyo','newsletter'],'Operations':['shopify','inventory','order'],'Compliance, Security & Integration':['zapier','integration','a2x']};
+    return !(kws[c]||[]).some(k=>p2l.includes(k));
+  });
+  if(uncovered) return 'Your '+uncovered+' category has no tool yet — that\'s the next gap to close.';
+  return 'Do a 15-minute admin audit: list every task you repeat weekly and rank by time cost. That\'s your next integration target.';
+}
+
+/* ─── COACH MODE (§2.5) ──────────────────────────────────────── */
+function enterCoachMode(){
+  const existing=document.getElementById('coach-inline'); if(existing) existing.remove();
+  const wrap=document.createElement('div'); wrap.id='coach-inline';
+  wrap.style.cssText='padding:10px 12px;border-top:1px solid var(--border);background:var(--bg);';
+  const label=document.createElement('p');
+  label.style.cssText='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-light);margin-bottom:8px;';
+  label.textContent='Coach Mode — pick a topic or ask a question';
+  wrap.appendChild(label);
+  const grid=document.createElement('div'); grid.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;';
+  COACH_TOPICS.forEach(t=>{
+    const btn=document.createElement('button'); btn.className='pill';
+    btn.textContent=t.label;
+    btn.onclick=()=>renderCoachAnswer(t.key,btn);
+    grid.appendChild(btn);
+  });
+  wrap.appendChild(grid);
+  const row=document.createElement('div'); row.style.cssText='display:flex;gap:8px;';
+  const inp=document.createElement('textarea'); inp.className='coach-free-input'; inp.placeholder='Ask anything about your tech stack…'; inp.rows=2; inp.style.flex='1';
+  const askBtn=document.createElement('button'); askBtn.className='pill navy'; askBtn.style.alignSelf='flex-end'; askBtn.textContent='Ask';
+  askBtn.onclick=()=>{ const q=inp.value.trim(); if(!q) return; inp.value=''; handleCoachFreeText(q); };
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();askBtn.onclick();} });
+  row.appendChild(inp); row.appendChild(askBtn);
+  wrap.appendChild(row);
+  document.getElementById('chat-pane').appendChild(wrap);
+  // Show transition
+  botSay(esc(COACH_TRANSITION),'bot',0);
+}
+
+function resolveCoachTokens(text){
+  const priority=S.answers.P4||S.p4Suggested||'your priority category';
+  const bt=S.businessType||'your business type';
+  const p6first=(S.answers.P6||'').split(/[;,]/)[0].trim()||'the manual task you described';
+  return text.replace(/\[priority_category\]/g,priority).replace(/\[business_type\]/g,bt).replace(/\[integration_task\]/g,p6first);
+}
+
+function renderCoachAnswer(key,activeBtn){
+  document.querySelectorAll('#coach-inline .pill').forEach(b=>b.classList.remove('selected'));
+  if(activeBtn) activeBtn.classList.add('selected');
+  const topic=COACH_TOPICS.find(t=>t.key===key); if(!topic) return;
+  const resolved=resolveCoachTokens(topic.answer);
+  const html=esc(resolved)+'<br><span class="authored-pill">Popstart Coach — Module 7, Section 1</span>';
+  botSay(html,'bot',0);
+  switchTab('deliverable');
+}
+
+const OUT_OF_SCOPE_PATTERNS=[
+  {rx:/\b(legal|lawyer|attorney|contract|liability|llc|incorporat|tax|accountant|irs|deduct)\b/i, decline:"That's a legal or tax question — and that's outside what this tool covers.", redirect:"Questions about entity formation go to your attorney; tax treatment goes to your accountant."},
+  {rx:/\b(pricing.negotiat|haggl|negotiate price|discount from vendor)\b/i, decline:"Pricing negotiation is outside this section.", redirect:"I can help you understand what fits your budget band, but specific vendor negotiation is beyond what I do here."},
+  {rx:/\b(invest|raise money|funding|valuation|pitch deck)\b/i, decline:"Funding and investment questions are outside this section.", redirect:"The Popstart platform has a dedicated section for funding paths."},
+  {rx:/\b(which specific (app|product|service) should i (buy|purchase|subscribe))\b/i, decline:"I can't endorse a single specific product.", redirect:"I can help you weigh options against your budget band and existing stack — which two are you considering?"}
+];
+
+function handleCoachFreeText(query){
+  userSay(query);
+  for(const p of OUT_OF_SCOPE_PATTERNS){
+    if(p.rx.test(query)){ botSay(esc(p.decline)+'<br><br><em>'+esc(p.redirect)+'</em>','bot',200); return; }
+  }
+  let best=null,bestScore=0;
+  COACH_TOPICS.forEach(t=>{
+    const sc=t.keywords.filter(k=>query.toLowerCase().includes(k.toLowerCase())).length;
+    if(sc>bestScore){bestScore=sc;best=t;}
+  });
+  if(best&&bestScore>0){ renderCoachAnswer(best.key,null); return; }
+  const stageL=effectiveStageLabel();
+  const priority=S.answers.P4||S.p4Suggested||'your priority category';
+  botSay(esc('I\'m not sure I caught what you\'re asking — but at '+stageL+', and with '+priority+' as your priority, the four topics above cover the most common questions. Which is closest to what you\'re thinking about?'),'bot',200);
+}
+
+/* ─── TOPBAR EVENTS ──────────────────────────────────────────── */
+$selStage.addEventListener('change',function(){
+  const v=this.value; if(!v) return;
+  if(S.step>0&&!S.generated){
+    if(!confirm('Changing stage will restart the conversation. Continue?')){this.value=S.stage||'';return;}
+    resetSession();
+  }
+  S.stage=v;
+  if(!S.generated&&($msgs.children.length===0||S.step===0)) init();
+  else S.stage=v;
+});
+$selType.addEventListener('change',function(){S.businessType=this.value;});
+$selGeo.addEventListener('change',function(){S.geoScope=this.value;});
+$inpInd.addEventListener('input',function(){S.industry=this.value.trim();});
+$apiKey.addEventListener('change',function(){try{sessionStorage.setItem('pw_apikey_tsb',this.value.trim());}catch(e){}});
+$apiKey.addEventListener('input',function(){if(!this.value.trim())setApiStatus('unknown');});
+document.querySelectorAll('.canvas-tab').forEach(tab=>{tab.addEventListener('click',()=>switchTab(tab.dataset.panel));});
+
+function resetSession(){
+  $msgs.innerHTML='';
+  const oldInline=document.getElementById('coach-inline'); if(oldInline) oldInline.remove();
+  S={stage:$selStage.value,effectiveStage:'',businessType:$selType.value,geoScope:$selGeo.value,industry:$inpInd.value.trim(),answers:{P1:null,P2:null,P3:null,P4:null,P5:null,P6:null},skips:{P1:0,P2:0,P3:0,P4:0,P5:0,P6:0},notSureCounts:{P1:0,P2:0,P3:0,P4:0,P5:0,P6:0},generated:false,step:0,plan:[],p4Suggested:null,tokens_used:{total_in:0,total_out:0,by_type:{draft:{in:0,out:0},coach:{in:0,out:0}}}};
+  document.querySelectorAll('.card-populated').forEach(c=>c.classList.remove('card-populated'));
+  document.getElementById('deliv-content').classList.add('hidden');
+  document.getElementById('deliv-empty').style.display='';
+  document.getElementById('badge-answers').style.display='none';
+  updateTokenDisplay(); closeAllInputs();
+}
+
+/* ─── START / INIT ───────────────────────────────────────────── */
+async function start(){
+  S.stage=$selStage.value||S.stage||'';
+  S.businessType=$selType.value||S.businessType||'';
+  S.geoScope=$selGeo.value||S.geoScope||'';
+  S.industry=$inpInd.value.trim()||S.industry||'';
+  S.plan=[...PROMPT_KEYS];
+
+  // Fold-in: Established → Growth
+  if(FOLD_STAGES[S.stage]){
+    S.effectiveStage=FOLD_STAGES[S.stage];
+    await botSay(esc(ESTABLISHED_OPENING),'bot',0);
+    // Continue with effective stage
+  } else {
+    S.effectiveStage=S.stage;
+    const opening=STAGE_OPENINGS[S.stage];
+    if(opening) await botSay(esc(opening),'bot',0);
+    else await botSay('Welcome — let\'s build your core tech stack.','bot',0);
+  }
+  S.step=1;
+  askNext();
+}
+
+async function init(){
+  try{const k=sessionStorage.getItem('pw_apikey_tsb');if(k&&!$apiKey.value){$apiKey.value=k;setApiStatus('unknown');}}catch(e){}
+  if($apiKey.value) setApiStatus('unknown');
+  S.stage=$selStage.value;
+  S.businessType=$selType.value;
+  S.geoScope=$selGeo.value;
+  S.industry=$inpInd.value.trim();
+  if(!S.stage){
+    await botSay('Welcome to Module 7, Section 1 — Building Your Core Tech Stack.','bot',0);
+    await botSay('<em>Select your Business Stage above to get started.</em>','hint',300);
+    const onStageChange=async function(){
+      const v=$selStage.value; if(!v) return;
+      $selStage.removeEventListener('change',onStageChange);
+      S.stage=v; S.step=1; await start();
+    };
+    $selStage.addEventListener('change',onStageChange);
+    return;
+  }
+  await start();
+}
+
+window.addEventListener('DOMContentLoaded',()=>{init();});
+console.log('[Popstart TSB Prototype v1] Loaded. Module 7, Section 1. ADD v1.2.');
+
+
+</script>
+</body>
+</html>
