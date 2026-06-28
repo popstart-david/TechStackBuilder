@@ -435,6 +435,9 @@
 
 
 
+
+
+
 'use strict';
 /* ═══════════════════════════════════════════════════════════════
    POPSTART — MODULE 7, SECTION 1: CORE TECH STACK BUILDER
@@ -882,73 +885,144 @@ function renderDynList(promptId){
 
 
 function renderDropdown(promptId){
-  const p=PROMPTS[promptId]; closeAllInputs();
-  $twrap.style.display='block'; $ta.style.display='none'; $counter.textContent='';
-  const old=document.getElementById('prompt-dropdown'); if(old) old.remove();
-  const sel=document.createElement('select'); sel.className='prompt-dropdown'; sel.id='prompt-dropdown';
-  const blank=document.createElement('option'); blank.value=''; blank.textContent='— select one —'; sel.appendChild(blank);
-  p.options.forEach(opt=>{ const o=document.createElement('option'); o.value=opt; o.textContent=opt; sel.appendChild(o); });
-  $twrap.insertBefore(sel,$ta);
-  // For P4 — pre-fill suggestion
-  if(promptId==='P4' && S.p4Suggested){
-    sel.value=S.p4Suggested;
-    botSay('Based on your top time drain, I\'d suggest: <strong>'+esc(S.p4Suggested)+'</strong> — but it\'s your call. Confirm or pick a different one.','hint',0);
+  const p = PROMPTS[promptId];
+
+  // Clear existing widgets
+  document.getElementById('dynlist-wrap')      && document.getElementById('dynlist-wrap').remove();
+  document.getElementById('prompt-dropdown')   && document.getElementById('prompt-dropdown').remove();
+  document.getElementById('multiselect-group') && document.getElementById('multiselect-group').remove();
+  $input.querySelectorAll('.pill-group').forEach(g => g.remove());
+
+  $ta.style.display = 'none';
+  $counter.textContent = '';
+  $twrap.style.display = 'block';
+
+  // Build select
+  const sel = document.createElement('select');
+  sel.className = 'prompt-dropdown';
+  sel.id = 'prompt-dropdown';
+  sel.style.cssText = 'width:100%;margin-bottom:6px;';
+  const blank = document.createElement('option');
+  blank.value = ''; blank.textContent = '— select one —';
+  sel.appendChild(blank);
+  p.options.forEach(function(opt){
+    const o = document.createElement('option');
+    o.value = opt; o.textContent = opt;
+    sel.appendChild(o);
+  });
+
+  // Insert before input-row
+  const inputRow = $twrap.querySelector('.input-row');
+  if(inputRow) $twrap.insertBefore(sel, inputRow);
+  else $twrap.appendChild(sel);
+
+  // P4 pre-fill
+  if(promptId === 'P4' && S.p4Suggested){
+    sel.value = S.p4Suggested;
+    botSay("Based on your top time drain, I'd suggest: <strong>"+esc(S.p4Suggested)+"</strong> — but it's your call. Confirm or pick a different one.","hint",0);
   }
-  const newSend=$send.cloneNode(true);
-  $send.parentNode.replaceChild(newSend,$send);
-  document.getElementById('send-btn').disabled=true;
-  sel.onchange=()=>{ document.getElementById('send-btn').disabled=!sel.value; };
-  document.getElementById('send-btn').onclick=()=>{
+
+  // Wire Send directly (no clone)
+  const sendEl = document.getElementById('send-btn');
+  sendEl.disabled = !sel.value;
+  sel.addEventListener('change', function(){
+    sendEl.disabled = !sel.value;
+  });
+  sendEl.onclick = function(){
     if(!sel.value) return;
-    closeAllInputs(); userSay(sel.value); handleAnswer(promptId,sel.value);
+    closeAllInputs();
+    userSay(sel.value);
+    handleAnswer(promptId, sel.value);
   };
-  $skip.style.display='block'; $skip.textContent='Skip for now';
+
+  $skip.style.display = 'block';
+  $skip.textContent = 'Skip for now';
   showInput();
 }
 
+
 function renderMultiSelect(promptId){
-  const p=PROMPTS[promptId]; closeAllInputs();
-  $twrap.style.display='none';
-  const group=document.createElement('div'); group.className='pill-group'; group.id='multiselect-group';
-  const selected=new Set();
-  p.options.forEach(opt=>{
-    const btn=document.createElement('button');
-    btn.className='pill'+(opt===p.exclusiveOption?' exclusive':'');
-    btn.textContent=opt;
-    btn.onclick=()=>{
-      if(opt===p.exclusiveOption){
-        if(selected.has(opt)){ selected.delete(opt); btn.classList.remove('selected'); }
-        else {
-          selected.clear(); selected.add(opt);
-          group.querySelectorAll('.pill').forEach(b=>b.classList.remove('selected'));
+  const p = PROMPTS[promptId];
+
+  // Clear existing widgets
+  document.getElementById('dynlist-wrap')    && document.getElementById('dynlist-wrap').remove();
+  document.getElementById('prompt-dropdown') && document.getElementById('prompt-dropdown').remove();
+  document.getElementById('multiselect-group') && document.getElementById('multiselect-group').remove();
+  $input.querySelectorAll('.pill-group').forEach(g => g.remove());
+
+  // Hide the textarea; show the input-row (which has Send + Skip)
+  $ta.style.display = 'none';
+  $counter.textContent = '';
+  $twrap.style.display = 'block'; // keep visible so Send button row shows
+
+  const selected = new Set();
+
+  // Build pill group — inserted ABOVE the input-row inside $twrap
+  const group = document.createElement('div');
+  group.id = 'multiselect-group';
+  group.style.cssText = 'display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px;';
+
+  p.options.forEach(function(opt){
+    const btn = document.createElement('button');
+    btn.className = 'pill' + (opt === p.exclusiveOption ? ' exclusive' : '');
+    btn.textContent = opt;
+    btn.addEventListener('click', function(){
+      if(opt === p.exclusiveOption){
+        // Exclusive: clear all others, toggle self
+        if(selected.has(opt)){
+          selected.delete(opt);
+          btn.classList.remove('selected');
+        } else {
+          selected.clear();
+          group.querySelectorAll('.pill').forEach(function(b){ b.classList.remove('selected'); });
+          selected.add(opt);
           btn.classList.add('selected');
         }
       } else {
-        const excBtn=Array.from(group.querySelectorAll('.pill.exclusive')).find(b=>b.textContent===p.exclusiveOption);
-        if(selected.has(p.exclusiveOption)){ selected.delete(p.exclusiveOption); if(excBtn) excBtn.classList.remove('selected'); }
-        if(selected.has(opt)){ selected.delete(opt); btn.classList.remove('selected'); }
-        else { selected.add(opt); btn.classList.add('selected'); }
+        // Normal option: clear exclusive if selected
+        if(selected.has(p.exclusiveOption)){
+          selected.delete(p.exclusiveOption);
+          group.querySelectorAll('.pill.exclusive').forEach(function(b){ b.classList.remove('selected'); });
+        }
+        if(selected.has(opt)){
+          selected.delete(opt);
+          btn.classList.remove('selected');
+        } else {
+          selected.add(opt);
+          btn.classList.add('selected');
+        }
       }
-      // enable send
-      document.getElementById('send-btn').disabled=selected.size===0;
-    };
+      // Update Send button state
+      document.getElementById('send-btn').disabled = selected.size === 0;
+    });
     group.appendChild(btn);
   });
-  $input.insertBefore(group,$input.firstChild);
-  const newSend=$send.cloneNode(true);
-  $send.parentNode.replaceChild(newSend,$send);
-  document.getElementById('send-btn').disabled=true;
-  document.getElementById('send-btn').onclick=()=>{
-    const vals=Array.from(selected);
-    if(vals.length===0) return;
-    const joined=vals.join(', ');
-    closeAllInputs(); userSay(joined); handleAnswer(promptId,joined);
+
+  // Insert pill group before the input-row (Send/Skip row)
+  const inputRow = $twrap.querySelector('.input-row');
+  if(inputRow) $twrap.insertBefore(group, inputRow);
+  else $twrap.appendChild(group);
+
+  // Wire Send button directly (no clone)
+  const sendEl = document.getElementById('send-btn');
+  sendEl.disabled = true;
+  sendEl.onclick = function(){
+    const vals = Array.from(selected);
+    if(vals.length === 0) return;
+    const joined = vals.join(', ');
+    closeAllInputs();
+    userSay(joined);
+    handleAnswer(promptId, joined);
   };
-  $skip.style.display='block'; $skip.textContent='Skip for now';
+
+  // Skip button
+  $skip.style.display = 'block';
+  $skip.textContent = 'Skip for now';
+
   showInput();
 }
 
-/* ─── PROMPT PRESENTATION ────────────────────────────────────── */
+
 async function renderPrompt(promptId){
   const p=PROMPTS[promptId];
   $pstep.textContent=p.name;
@@ -1634,7 +1708,7 @@ function boot(){
     start();
   } else {
     // No stage yet — show prompt and wait
-    botSay('Welcome to Module 7, Section 1 (v1.3)— Building Your Core Tech Stack.', 'bot', 0);
+    botSay('Welcome to Module 7, Section 1 (v1.4) — Building Your Core Tech Stack.', 'bot', 0);
     botSay('<em>Select your Business Stage above to get started.</em>', 'hint', 300);
     // The outer $selStage change listener will call start() when user picks a stage
   }
@@ -1642,6 +1716,9 @@ function boot(){
 
 window.addEventListener('DOMContentLoaded', boot);
 console.log('[Popstart TSB Prototype v1] Loaded. Module 7, Section 1. ADD v1.2.');
+
+
+
 
 
 
