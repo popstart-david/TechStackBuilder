@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Popstart — Module 7, Section 1: Core Tech Stack Builder, v1.1</title>
+  <title>Popstart — Module 7, Section 1: Core Tech Stack Builder, v1.2</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
@@ -433,6 +433,7 @@
 
 <script>
 
+
 'use strict';
 /* ═══════════════════════════════════════════════════════════════
    POPSTART — MODULE 7, SECTION 1: CORE TECH STACK BUILDER
@@ -809,15 +810,19 @@ function renderDynList(promptId){
     };
     Array.from(wrap.querySelectorAll('.dynlist-input')).forEach(i=>i.oninput=wireSend);
   }
-  // Clear old dynlist if present
+  // Remove old dynlist or dropdown
   const old=document.getElementById('dynlist-wrap'); if(old) old.remove();
-  // Insert dynlist at top of $twrap, before everything else
-  $twrap.insertBefore(wrap,$twrap.firstChild);
-  wrap.style.width='100%';
+  const oldDd=document.getElementById('prompt-dropdown'); if(oldDd) oldDd.remove();
+  // Hide the textarea — dynlist replaces it
+  $ta.style.display='none';
+  $twrap.style.display='block';
+  // Append dynlist inside $twrap (after the hidden $ta and before .input-row)
+  const inputRow=$twrap.querySelector('.input-row');
+  if(inputRow){ $twrap.insertBefore(wrap,inputRow); }
+  else { $twrap.appendChild(wrap); }
+  wrap.style.cssText='width:100%;margin-bottom:6px;';
   $skip.style.display='block'; $skip.textContent='Skip for now';
   wireSend();
-  // Ensure $twrap is visible and $input is shown
-  $twrap.style.display='block';
   showInput();
 }
 
@@ -1505,17 +1510,14 @@ function handleCoachFreeText(query){
 /* ─── TOPBAR EVENTS ──────────────────────────────────────────── */
 $selStage.addEventListener('change',function(){
   const v=this.value; if(!v) return;
-  // If conversation is active and not done, confirm restart
+  // Conversation active — confirm restart
   if(S.step>0&&!S.generated){
     if(!confirm('Changing stage will restart the conversation. Continue?')){this.value=S.stage||'';return;}
-    resetSession(); S.stage=v; start(); return;
+    _booted=false; resetSession(); S.stage=v; start(); return;
   }
+  // Conversation not yet started — this is the first stage selection
   S.stage=v;
-  // Only trigger start if the conversation hasn't begun yet
-  // _initDone prevents double-fire when DOMContentLoaded + change event both fire
-  if(!S.generated && S.step===0 && !_initDone){
-    _initDone=true; start();
-  }
+  if(!_booted){ start(); }
 });
 $selType.addEventListener('change',function(){S.businessType=this.value;});
 $selGeo.addEventListener('change',function(){S.geoScope=this.value;});
@@ -1532,55 +1534,58 @@ function resetSession(){
   document.getElementById('deliv-content').classList.add('hidden');
   document.getElementById('deliv-empty').style.display='';
   document.getElementById('badge-answers').style.display='none';
-  updateTokenDisplay(); closeAllInputs(); _initDone=false;
+  updateTokenDisplay(); closeAllInputs(); _booted=false; _initDone=false;
 }
 
-/* ─── START / INIT ───────────────────────────────────────────── */
+/* ─── BOOT ───────────────────────────────────────────────── */
+// Single boot function — called once on DOMContentLoaded.
+// If no stage is selected, waits for the first stage selection.
+// If stage is already set, starts immediately.
+// The outer $selStage change handler is gated so it never
+// double-fires with this boot sequence.
+
+let _booted = false; // hard guard — start() runs at most once per session
+
 async function start(){
-  S.stage=$selStage.value||S.stage||'';
-  S.businessType=$selType.value||S.businessType||'';
-  S.geoScope=$selGeo.value||S.geoScope||'';
-  S.industry=$inpInd.value.trim()||S.industry||'';
-  S.plan=[...PROMPT_KEYS];
+  if(_booted) return; // prevent any double-call
+  _booted = true;
+
+  S.stage        = $selStage.value || '';
+  S.businessType = $selType.value  || '';
+  S.geoScope     = $selGeo.value   || '';
+  S.industry     = $inpInd.value.trim();
+  S.plan         = [...PROMPT_KEYS];
 
   // Fold-in: Established → Growth
   if(FOLD_STAGES[S.stage]){
-    S.effectiveStage=FOLD_STAGES[S.stage];
-    await botSay(esc(ESTABLISHED_OPENING),'bot',0);
-    // Continue with effective stage
+    S.effectiveStage = FOLD_STAGES[S.stage];
+    await botSay(esc(ESTABLISHED_OPENING), 'bot', 0);
   } else {
-    S.effectiveStage=S.stage;
-    const opening=STAGE_OPENINGS[S.stage];
-    if(opening) await botSay(esc(opening),'bot',0);
-    else await botSay('Welcome — let\'s build your core tech stack.','bot',0);
+    S.effectiveStage = S.stage;
+    const opening = STAGE_OPENINGS[S.stage];
+    await botSay(esc(opening || 'Welcome — let\'s build your core tech stack.'), 'bot', 0);
   }
-  S.step=1;
+  S.step = 1;
   askNext();
 }
 
-async function init(){
-  try{const k=sessionStorage.getItem('pw_apikey_tsb');if(k&&!$apiKey.value){$apiKey.value=k;setApiStatus('unknown');}}catch(e){}
+function boot(){
+  try{const k=sessionStorage.getItem('pw_apikey_tsb'); if(k&&!$apiKey.value){$apiKey.value=k;} }catch(e){}
   if($apiKey.value) setApiStatus('unknown');
-  S.stage=$selStage.value;
-  S.businessType=$selType.value;
-  S.geoScope=$selGeo.value;
-  S.industry=$inpInd.value.trim();
-  if(S.stage) _initDone=true; // mark started before any change event fires
-  if(!S.stage){
-    await botSay('Welcome to Module 7, Section 1 — Building Your Core Tech Stack.','bot',0);
-    await botSay('<em>Select your Business Stage above to get started.</em>','hint',300);
-    const onStageChange=async function(){
-      const v=$selStage.value; if(!v) return;
-      $selStage.removeEventListener('change',onStageChange);
-      _initDone=true; S.stage=v; await start();
-    };
-    $selStage.addEventListener('change',onStageChange);
-    return;
+
+  const stage = $selStage.value;
+  if(stage){
+    // Stage already selected — start immediately
+    start();
+  } else {
+    // No stage yet — show prompt and wait
+    botSay('Welcome to Module 7, Section 1 — Building Your Core Tech Stack.', 'bot', 0);
+    botSay('<em>Select your Business Stage above to get started.</em>', 'hint', 300);
+    // The outer $selStage change listener will call start() when user picks a stage
   }
-  await start();
 }
 
-window.addEventListener('DOMContentLoaded',()=>{init();});
+window.addEventListener('DOMContentLoaded', boot);
 console.log('[Popstart TSB Prototype v1] Loaded. Module 7, Section 1. ADD v1.2.');
 
 
