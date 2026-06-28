@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Popstart — Module 7, Section 1: Core Tech Stack Builder, v1.0</title>
+  <title>Popstart — Module 7, Section 1: Core Tech Stack Builder</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
@@ -432,6 +432,7 @@
 
 
 <script>
+
 'use strict';
 /* ═══════════════════════════════════════════════════════════════
    POPSTART — MODULE 7, SECTION 1: CORE TECH STACK BUILDER
@@ -629,6 +630,7 @@ const REVIEW = {
 };
 
 /* ─── SESSION STATE ──────────────────────────────────────────── */
+let _initDone = false; // prevents double-fire on stage selection
 let S = {
   stage:'', effectiveStage:'', businessType:'', geoScope:'', industry:'',
   answers:{ P1:null, P2:null, P3:null, P4:null, P5:null, P6:null },
@@ -809,9 +811,14 @@ function renderDynList(promptId){
   }
   // Clear old dynlist if present
   const old=document.getElementById('dynlist-wrap'); if(old) old.remove();
-  $twrap.insertBefore(wrap,$ta);
+  // Insert dynlist at top of $twrap, before everything else
+  $twrap.insertBefore(wrap,$twrap.firstChild);
+  wrap.style.width='100%';
   $skip.style.display='block'; $skip.textContent='Skip for now';
-  wireSend(); showInput();
+  wireSend();
+  // Ensure $twrap is visible and $input is shown
+  $twrap.style.display='block';
+  showInput();
 }
 
 function renderDropdown(promptId){
@@ -1498,13 +1505,17 @@ function handleCoachFreeText(query){
 /* ─── TOPBAR EVENTS ──────────────────────────────────────────── */
 $selStage.addEventListener('change',function(){
   const v=this.value; if(!v) return;
+  // If conversation is active and not done, confirm restart
   if(S.step>0&&!S.generated){
     if(!confirm('Changing stage will restart the conversation. Continue?')){this.value=S.stage||'';return;}
-    resetSession();
+    resetSession(); S.stage=v; start(); return;
   }
   S.stage=v;
-  if(!S.generated&&($msgs.children.length===0||S.step===0)) init();
-  else S.stage=v;
+  // Only trigger start if the conversation hasn't begun yet
+  // _initDone prevents double-fire when DOMContentLoaded + change event both fire
+  if(!S.generated && S.step===0 && !_initDone){
+    _initDone=true; start();
+  }
 });
 $selType.addEventListener('change',function(){S.businessType=this.value;});
 $selGeo.addEventListener('change',function(){S.geoScope=this.value;});
@@ -1521,7 +1532,7 @@ function resetSession(){
   document.getElementById('deliv-content').classList.add('hidden');
   document.getElementById('deliv-empty').style.display='';
   document.getElementById('badge-answers').style.display='none';
-  updateTokenDisplay(); closeAllInputs();
+  updateTokenDisplay(); closeAllInputs(); _initDone=false;
 }
 
 /* ─── START / INIT ───────────────────────────────────────────── */
@@ -1554,13 +1565,14 @@ async function init(){
   S.businessType=$selType.value;
   S.geoScope=$selGeo.value;
   S.industry=$inpInd.value.trim();
+  if(S.stage) _initDone=true; // mark started before any change event fires
   if(!S.stage){
     await botSay('Welcome to Module 7, Section 1 — Building Your Core Tech Stack.','bot',0);
     await botSay('<em>Select your Business Stage above to get started.</em>','hint',300);
     const onStageChange=async function(){
       const v=$selStage.value; if(!v) return;
       $selStage.removeEventListener('change',onStageChange);
-      S.stage=v; S.step=1; await start();
+      _initDone=true; S.stage=v; await start();
     };
     $selStage.addEventListener('change',onStageChange);
     return;
@@ -1570,6 +1582,7 @@ async function init(){
 
 window.addEventListener('DOMContentLoaded',()=>{init();});
 console.log('[Popstart TSB Prototype v1] Loaded. Module 7, Section 1. ADD v1.2.');
+
 
 
 </script>
