@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Popstart — Module 7, Section 1: Core Tech Stack Builder, v1.2</title>
+  <title>Popstart — Module 7, Section 1: Core Tech Stack Builder</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
@@ -434,6 +434,7 @@
 <script>
 
 
+
 'use strict';
 /* ═══════════════════════════════════════════════════════════════
    POPSTART — MODULE 7, SECTION 1: CORE TECH STACK BUILDER
@@ -765,66 +766,120 @@ function openInput(){ showInput(); $twrap.style.display='block'; }
 function closeAllInputs(){ hideInput(); $input.querySelectorAll('.pill-group').forEach(g=>g.remove()); }
 
 function renderDynList(promptId){
-  const p=PROMPTS[promptId];
-  const stage=S.effectiveStage||S.stage;
-  const elevated=['early-stage','growth'].includes(stage);
-  const cap=elevated?p.dynCap.elevated:p.dynCap.default;
-  closeAllInputs();
-  $twrap.style.display='block';
-  $ta.style.display='none';
-  $counter.textContent='';
-  // Build dynlist UI
-  const wrap=document.createElement('div'); wrap.className='dynlist-wrap'; wrap.id='dynlist-wrap';
-  const addRow=(idx,val)=>{
-    const row=document.createElement('div'); row.className='dynlist-row';
-    const num=document.createElement('span'); num.className='dynlist-num'; num.textContent=(idx+1)+'.';
-    const inp=document.createElement('input'); inp.className='dynlist-input'; inp.type='text'; inp.placeholder='Add item…'; inp.maxLength=p.charLimit||300; inp.value=val||'';
-    const rm=document.createElement('button'); rm.className='dynlist-rm'; rm.textContent='×';
-    rm.onclick=()=>{ row.remove(); updateDynCount(); };
-    row.appendChild(num); row.appendChild(inp); row.appendChild(rm); return row;
-  };
-  wrap.appendChild(addRow(0,''));
-  const addBtn=document.createElement('button'); addBtn.className='dynlist-add'; addBtn.textContent='+ Add another';
-  addBtn.onclick=()=>{
-    const rows=wrap.querySelectorAll('.dynlist-row');
-    if(rows.length>=cap){ addBtn.textContent='Max '+cap+' items reached'; return; }
-    const newRow=addRow(rows.length,''); wrap.insertBefore(newRow,addBtn); updateDynCount();
-  };
-  wrap.appendChild(addBtn);
-  function updateDynCount(){
-    const rows=wrap.querySelectorAll('.dynlist-row');
-    rows.forEach((r,i)=>{ r.querySelector('.dynlist-num').textContent=(i+1)+'.'; });
-    addBtn.textContent=rows.length>=cap?'Max '+cap+' items reached':'+ Add another';
-    wireSend();
+  const p = PROMPTS[promptId];
+  const stage = S.effectiveStage || S.stage;
+  const elevated = ['early-stage','growth'].includes(stage);
+  const cap = elevated ? p.dynCap.elevated : p.dynCap.default;
+
+  // Clear any existing input widgets
+  document.getElementById('dynlist-wrap')    && document.getElementById('dynlist-wrap').remove();
+  document.getElementById('prompt-dropdown') && document.getElementById('prompt-dropdown').remove();
+  $input.querySelectorAll('.pill-group').forEach(g => g.remove());
+
+  // Hide the textarea; we replace it with numbered rows
+  $ta.style.display = 'none';
+  $counter.textContent = '';
+
+  // Build the dynlist container
+  const wrap = document.createElement('div');
+  wrap.id = 'dynlist-wrap';
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:5px;width:100%;margin-bottom:6px;';
+
+  function makeRow(idx, val){
+    const row = document.createElement('div');
+    row.className = 'dynlist-row';
+    const num = document.createElement('span');
+    num.className = 'dynlist-num';
+    num.textContent = (idx+1)+'.';
+    const inp = document.createElement('input');
+    inp.className = 'dynlist-input';
+    inp.type = 'text';
+    inp.placeholder = 'Add item…';
+    inp.maxLength = p.charLimit || 300;
+    inp.value = val || '';
+    inp.style.cssText = 'flex:1;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:6px 9px;font-family:var(--font-sans);font-size:13px;background:var(--bg);outline:none;';
+    inp.addEventListener('focus', function(){ this.style.borderColor='var(--teal)'; this.style.background='var(--surface)'; });
+    inp.addEventListener('blur',  function(){ this.style.borderColor='var(--border)'; this.style.background='var(--bg)'; });
+    const rm = document.createElement('button');
+    rm.className = 'dynlist-rm';
+    rm.textContent = '×';
+    rm.addEventListener('click', function(){
+      row.remove();
+      reNumberRows();
+      updateSendState();
+    });
+    row.appendChild(num);
+    row.appendChild(inp);
+    row.appendChild(rm);
+    return row;
   }
-  function wireSend(){
-    const vals=Array.from(wrap.querySelectorAll('.dynlist-input')).map(i=>i.value.trim()).filter(Boolean);
-    const newSend=$send.cloneNode(true);
-    $send.parentNode.replaceChild(newSend,newSend.id?newSend:$send);
-    document.getElementById('send-btn').disabled=vals.length<(p.dynMin||1);
-    document.getElementById('send-btn').onclick=()=>{
-      const vals2=Array.from(wrap.querySelectorAll('.dynlist-input')).map(i=>i.value.trim()).filter(Boolean);
-      if(vals2.length<(p.dynMin||1)) return;
-      const joined=vals2.join('; ');
-      closeAllInputs(); userSay(joined); handleAnswer(promptId,joined);
+
+  function reNumberRows(){
+    wrap.querySelectorAll('.dynlist-row').forEach(function(r,i){
+      r.querySelector('.dynlist-num').textContent = (i+1)+'.';
+    });
+    const n = wrap.querySelectorAll('.dynlist-row').length;
+    addBtn.textContent = n >= cap ? 'Max '+cap+' items reached' : '+ Add another';
+  }
+
+  function updateSendState(){
+    const vals = Array.from(wrap.querySelectorAll('.dynlist-input')).map(function(i){ return i.value.trim(); }).filter(Boolean);
+    const sendEl = document.getElementById('send-btn');
+    sendEl.disabled = vals.length < (p.dynMin || 1);
+    sendEl.onclick = function(){
+      const vals2 = Array.from(wrap.querySelectorAll('.dynlist-input')).map(function(i){ return i.value.trim(); }).filter(Boolean);
+      if(vals2.length < (p.dynMin||1)) return;
+      const joined = vals2.join('; ');
+      closeAllInputs();
+      userSay(joined);
+      handleAnswer(promptId, joined);
     };
-    Array.from(wrap.querySelectorAll('.dynlist-input')).forEach(i=>i.oninput=wireSend);
   }
-  // Remove old dynlist or dropdown
-  const old=document.getElementById('dynlist-wrap'); if(old) old.remove();
-  const oldDd=document.getElementById('prompt-dropdown'); if(oldDd) oldDd.remove();
-  // Hide the textarea — dynlist replaces it
-  $ta.style.display='none';
-  $twrap.style.display='block';
-  // Append dynlist inside $twrap (after the hidden $ta and before .input-row)
-  const inputRow=$twrap.querySelector('.input-row');
-  if(inputRow){ $twrap.insertBefore(wrap,inputRow); }
-  else { $twrap.appendChild(wrap); }
-  wrap.style.cssText='width:100%;margin-bottom:6px;';
-  $skip.style.display='block'; $skip.textContent='Skip for now';
-  wireSend();
+
+  // First row
+  const firstRow = makeRow(0, '');
+  wrap.appendChild(firstRow);
+
+  // Add-another button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'dynlist-add';
+  addBtn.textContent = '+ Add another';
+  addBtn.addEventListener('click', function(){
+    const rows = wrap.querySelectorAll('.dynlist-row');
+    if(rows.length >= cap){ addBtn.textContent='Max '+cap+' items reached'; return; }
+    const newRow = makeRow(rows.length, '');
+    wrap.insertBefore(newRow, addBtn);
+    reNumberRows();
+    newRow.querySelector('.dynlist-input').focus();
+  });
+  wrap.appendChild(addBtn);
+
+  // Wire all inputs to update send state
+  function wireInputs(){
+    wrap.querySelectorAll('.dynlist-input').forEach(function(i){
+      i.addEventListener('input', updateSendState);
+    });
+  }
+
+  // Insert wrap before .input-row inside $twrap
+  $twrap.style.display = 'block';
+  const inputRow = $twrap.querySelector('.input-row');
+  if(inputRow) $twrap.insertBefore(wrap, inputRow);
+  else $twrap.appendChild(wrap);
+
+  // Wire inputs and send state AFTER inserting into DOM
+  wireInputs();
+  updateSendState();
+
+  // Skip button
+  $skip.style.display = 'block';
+  $skip.textContent = 'Skip for now';
+
   showInput();
+  // Focus first input
+  setTimeout(function(){ firstRow.querySelector('.dynlist-input').focus(); }, 80);
 }
+
 
 function renderDropdown(promptId){
   const p=PROMPTS[promptId]; closeAllInputs();
@@ -1579,7 +1634,7 @@ function boot(){
     start();
   } else {
     // No stage yet — show prompt and wait
-    botSay('Welcome to Module 7, Section 1 (v.12) — Building Your Core Tech Stack.', 'bot', 0);
+    botSay('Welcome to Module 7, Section 1 (v1.3)— Building Your Core Tech Stack.', 'bot', 0);
     botSay('<em>Select your Business Stage above to get started.</em>', 'hint', 300);
     // The outer $selStage change listener will call start() when user picks a stage
   }
@@ -1587,6 +1642,7 @@ function boot(){
 
 window.addEventListener('DOMContentLoaded', boot);
 console.log('[Popstart TSB Prototype v1] Loaded. Module 7, Section 1. ADD v1.2.');
+
 
 
 
